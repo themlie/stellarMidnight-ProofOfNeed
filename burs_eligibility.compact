@@ -1,0 +1,11 @@
+pragma language_version >= 0.14.0;
+
+export ledger threshold: Uint<64>;
+
+constructor(initial_threshold: Uint<64>) {
+    threshold = disclose(initial_threshold);
+}
+
+export circuit check_eligibility(income: Uint<64>): Boolean {
+    return income < threshold;
+}

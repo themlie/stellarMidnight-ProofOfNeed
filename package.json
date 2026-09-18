@@ -1,0 +1,22 @@
+{
+  "name": "burs_contract",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "jest": "^30.5.2",
+    "ts-jest": "^29.4.12",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "^0.19.0"
+  }
+}
