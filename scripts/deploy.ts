@@ -98,15 +98,21 @@ const deriveKeys = (seedHex: string) => {
   return derived.keys;
 };
 
-const checkProofServer = async () => {
+const isProofServerUp = async () => {
   try {
-    const res = await fetch(`${CONFIG.proofServerUrl}/health`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await fetch(`${CONFIG.proofServerUrl}/health`)).ok;
   } catch {
-    console.error(`❌ Proof server'a ulaşılamıyor (${CONFIG.proofServerUrl}).`);
-    console.error('   docker run -d --name midnight-proof-server -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v');
-    process.exit(1);
+    return false;
   }
+};
+
+/** Proofs are needed from DUST registration onwards, so wait for the server instead of exiting. */
+const waitForProofServer = async () => {
+  if (await isProofServerUp()) return;
+  console.log(`⏳ Proof server'a ulaşılamıyor (${CONFIG.proofServerUrl}). Başlatın, script bekliyor:`);
+  console.log('   docker run -d --name midnight-proof-server -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v');
+  while (!(await isProofServerUp())) await new Promise((r) => setTimeout(r, 5000));
+  console.log('✅ Proof server çalışıyor\n');
 };
 
 const waitFor = (wallet: WalletFacade, predicate: (s: FacadeState) => boolean) =>
@@ -130,6 +136,7 @@ const ensureDust = async (wallet: WalletFacade, keystore: UnshieldedKeystore) =>
     console.log(`✅ tNIGHT geldi: ${nightBalance(state)}\n`);
   }
 
+  await waitForProofServer();
   const unregistered = state.unshielded.availableCoins.filter((c) => !c.meta.registeredForDustGeneration);
   if (unregistered.length > 0) {
     console.log(`⏳ ${unregistered.length} tNIGHT UTXO'su DUST üretimine kaydediliyor...`);
@@ -154,9 +161,6 @@ async function main() {
 
   setNetworkId(CONFIG.networkId);
   const networkId = getNetworkId();
-
-  await checkProofServer();
-  console.log('✅ Proof server çalışıyor\n');
 
   // ─── Wallet ────────────────────────────────────────────────────────────────
   const seed = loadOrCreateSeed();
@@ -223,6 +227,8 @@ async function main() {
     walletProvider,
     midnightProvider: walletProvider,
   };
+
+  await waitForProofServer();
 
   // ─── Deploy ────────────────────────────────────────────────────────────────
   const compiledContract = CompiledContract.make('burs_eligibility', Contract).pipe(
