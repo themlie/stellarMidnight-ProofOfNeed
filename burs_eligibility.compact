@@ -1,11 +1,37 @@
-pragma language_version >= 0.14.0;
+pragma language_version >= 0.20;
 
+import CompactStandardLibrary;
+
+// ─── Public ledger state ──────────────────────────────────────────────────────
+// Everything declared with `ledger` is stored on-chain and visible to anyone.
+
+// Income threshold set by the foundation at deploy time (e.g. 10000 TL).
 export ledger threshold: Uint<64>;
+
+// Total number of eligibility checks run against this contract.
+export ledger totalChecks: Counter;
+
+// Number of checks that proved income was below the threshold.
+export ledger eligibleCount: Counter;
+
+// ─── Private witness ──────────────────────────────────────────────────────────
+// Supplied by the student's local DApp. The value is used inside the ZK proof
+// and never leaves the student's machine.
+witness familyIncome(): Uint<64>;
 
 constructor(initial_threshold: Uint<64>) {
     threshold = disclose(initial_threshold);
 }
 
-export circuit check_eligibility(income: Uint<64>): Boolean {
-    return income < threshold;
+// Proves `familyIncome() < threshold` without revealing the income.
+// Only the boolean result is disclosed and recorded on the public ledger.
+export circuit check_eligibility(): Boolean {
+    const eligible = disclose(familyIncome() < threshold);
+
+    totalChecks.increment(1);
+    if (eligible) {
+        eligibleCount.increment(1);
+    }
+
+    return eligible;
 }
