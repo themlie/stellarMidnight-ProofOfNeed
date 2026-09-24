@@ -1,42 +1,47 @@
-import { Contract, Witnesses } from '../contract/index';
+import { BursSimulator } from './simulator.js';
 
-// The threshold set by the donor/foundation. For example: 10000 TL.
+// Threshold set by the donor/foundation at deploy time: 10000 TL.
 const THRESHOLD = 10000n;
 
-describe('BursEligibility Contract', () => {
-    let contract: Contract<any, Witnesses<any>>;
+describe('BursEligibility contract', () => {
+  let sim: BursSimulator;
 
-    beforeAll(() => {
-        // Initialize the contract with empty witnesses as we don't have any predefined witnesses
-        contract = new Contract({});
-    });
+  beforeEach(async () => {
+    sim = await BursSimulator.deploy(THRESHOLD);
+  });
 
-    it('should initialize with correct threshold', async () => {
-        // In a real environment, we would use the Midnight DApp connector
-        // or a testing runtime to simulate the network state.
-        // For now, we are structuring the tests as required by Level 1.
-        expect(THRESHOLD).toBe(10000n);
-    });
+  it('stores the threshold in public ledger state at deploy', () => {
+    const state = sim.getLedger();
+    expect(state.threshold).toBe(THRESHOLD);
+    expect(state.totalChecks).toBe(0n);
+    expect(state.eligibleCount).toBe(0n);
+  });
 
-    it('should return true for income below threshold (eşik altı)', async () => {
-        const studentIncome = 8000n;
-        // The circuit is expected to evaluate to true since 8000 < 10000
-        // Expected call: contract.circuits.check_eligibility(context, studentIncome)
-        const isEligible = studentIncome < THRESHOLD;
-        expect(isEligible).toBe(true);
-    });
+  it('is eligible when income is below the threshold', async () => {
+    expect(await sim.checkEligibility(8000n)).toBe(true);
+  });
 
-    it('should return false for income above threshold (eşik üstü)', async () => {
-        const studentIncome = 15000n;
-        // The circuit is expected to evaluate to false since 15000 is not < 10000
-        const isEligible = studentIncome < THRESHOLD;
-        expect(isEligible).toBe(false);
-    });
+  it('is not eligible when income is above the threshold', async () => {
+    expect(await sim.checkEligibility(15000n)).toBe(false);
+  });
 
-    it('should return false for income equal to threshold (sınır değer)', async () => {
-        const studentIncome = 10000n;
-        // The circuit is expected to evaluate to false since 10000 is not < 10000
-        const isEligible = studentIncome < THRESHOLD;
-        expect(isEligible).toBe(false);
-    });
+  it('is not eligible when income equals the threshold (boundary)', async () => {
+    expect(await sim.checkEligibility(THRESHOLD)).toBe(false);
+  });
+
+  it('is eligible for zero income', async () => {
+    expect(await sim.checkEligibility(0n)).toBe(true);
+  });
+
+  it('records only counts on the ledger, never the income', async () => {
+    await sim.checkEligibility(8000n);
+    await sim.checkEligibility(9999n);
+    await sim.checkEligibility(12345n);
+
+    const state = sim.getLedger();
+    expect(state.totalChecks).toBe(3n);
+    expect(state.eligibleCount).toBe(2n);
+    // Public state exposes exactly these fields and nothing income-related.
+    expect(Object.keys(state).sort()).toEqual(['eligibleCount', 'threshold', 'totalChecks']);
+  });
 });
