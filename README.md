@@ -1,32 +1,110 @@
-# İ2 BURS — "İhtiyacını kanıtla, gelirini söyleme"
+# İ2 BURS: İhtiyacını kanıtla, gelirini söyleme
 
-**Proje Konsepti:** 
-Günümüzde burs başvuruları, öğrencilerin ve ailelerinin tüm finansal verilerini (gelir, meslek, iş yeri vb.) merkezi kurumlara veya bir yetkiliye açmasını gerektiriyor. Bu durum hem gizlilik ihlali yaratıyor hem de sosyoekonomik bir "utanç" unsuru olabiliyor. **İ2 BURS** projesi, Midnight ağının Sıfır Bilgi (Zero-Knowledge) teknolojisini kullanarak bu problemi çözer. Öğrenci sadece gelirinin, bağışçı/vakıf tarafından belirlenen "Burs Eşiğinin" altında olduğunu kanıtlar. Ailenin gerçek geliri, iş yeri veya diğer hiçbir hassas verisi zincire yazılmaz ve kimseyle paylaşılmaz.
+İ2 BURS, Midnight üzerinde çalışan bir burs uygunluk sözleşmesi. Öğrenci, ailesinin gelirinin vakfın belirlediği eşiğin altında olduğunu sıfır bilgi kanıtıyla ispatlıyor. Gelirin kendisi ne zincire yazılıyor ne de öğrencinin cihazından çıkıyor.
 
-### Teknik Mimari: Public State vs Private Witness
+## Ürün fikri
 
-Midnight ağının `private-by-default` (varsayılan olarak gizli) yapısı bu proje için kusursuzdur:
+Bugün burs başvurusu yapan bir öğrenci, ailesinin gelirini, mesleğini ve iş yerini bir memura ya da vakıf görevlisine açmak zorunda. Bu hem gereğinden fazla kişisel verinin toplanması demek hem de birçok aile için utanç verici bir süreç. Vakfın aslında bilmesi gereken tek şey "bu öğrenci eşiğin altında mı?" sorusunun cevabı. İ2 BURS'ta vakıf eşiği zincire yazıyor, öğrenci gelirini sadece kendi cihazında kullanarak bir kanıt üretiyor ve ağ bu kanıtı doğruluyor. Vakıf evet/hayır cevabını görüyor, rakamı hiçbir zaman görmüyor. İlerleyen aşamalarda uygun bulunan öğrencilere bağışçı fonlarından aylık ödeme yapılması planlanıyor.
 
-*   **Public State (Açık Durum):** Sözleşmedeki `threshold` (eşik) değeri public ledger'da tutulur. Bu, vakfın belirlediği şeffaf kuraldır (Örn: Geliri 10.000 TL'nin altında olanlar burs alabilir). Ayrıca sürecin sonunda çıkan `eligible: Boolean` (Bursa uygun mu?) sonucu da herkes tarafından doğrulanabilir.
-*   **Private Witness (Gizli Kanıt):** Öğrencinin aile geliri (`income`), mesleği veya kişisel bilgileri **asla** public ağa yazılmaz. Bu veriler yalnızca öğrencinin kendi cihazında lokal olarak (private witness) devreden (circuit) geçer ve sıfır bilgi kanıtı (ZK-Proof) üretir. Ağ sadece kanıtı doğrular, verinin kendisini bilmez.
+## Public state ve private witness
 
----
+Compact'ta circuit girdileri varsayılan olarak gizli. `disclose()` bir değeri kendi başına public yapmaz. Derleyiciye "bu değerin açığa çıkmasını bilerek kabul ediyorum" demenin yolu budur. Bir değer ancak public bir alana geçtiğinde görünür hale gelir: ledger'a yazıldığında, export edilmiş bir circuit'ten döndürüldüğünde ya da başka bir sözleşmeye gönderildiğinde.
 
-### Kurulum (Local Çalıştırma)
+Sözleşme ([burs_eligibility.compact](burs_eligibility.compact)) bu ayrımı şöyle kullanıyor:
 
-Bu projeyi bilgisayarınızda derlemek ve test etmek için WSL (Ubuntu) ortamında Midnight Compact Derleyicisi'nin kurulu olması gerekir.
+| | Ne | Nerede | Kim görebilir |
+|---|---|---|---|
+| Public ledger | `threshold` | Zincir | Herkes. Vakfın kuralı zaten şeffaf olmalı. |
+| Public ledger | `totalChecks`, `eligibleCount` | Zincir | Herkes. Kaç kontrol yapıldığı ve kaçının olumlu sonuçlandığı. |
+| Circuit sonucu | `check_eligibility()` dönüşü (Boolean) | İşlem transcript'i | Herkes. Sadece uygun/uygun değil bilgisi. |
+| Private witness | `familyIncome()` | Öğrencinin cihazı | Sadece öğrenci. |
 
-1. Proje dizinine gidin.
-2. Derlemek için şu komutu çalıştırın:
+`familyIncome()` bir `witness`. Değerini öğrencinin yerel DApp'i sağlıyor ([src/witnesses.ts](src/witnesses.ts)) ve bu değer ZK kanıtının içinde kullanılıyor. Circuit'te `disclose()` sadece karşılaştırmanın sonucuna uygulanıyor:
+
+```compact
+export circuit check_eligibility(): Boolean {
+    const eligible = disclose(familyIncome() < threshold);
+    ...
+}
+```
+
+Gelirin kendisini ledger'a yazmaya ya da döndürmeye çalışırsanız derleyici `disclose()` olmadan buna izin vermez. Bu da gelirin kazara açığa çıkmasını derleme aşamasında engelliyor.
+
+Zinciri izleyen biri eşiği, kaç kontrol yapıldığını ve her kontrolün sonucunu görebilir. Gelir rakamını, meslek ya da aile bilgilerini göremez.
+
+## Proje yapısı
+
+```
+burs_eligibility.compact   Compact sözleşmesi
+managed/burs_eligibility/  Derleme çıktısı (circuit, prover/verifier anahtarları, zkir, TS bağlamaları)
+src/witnesses.ts           Private state tipi ve familyIncome witness'ının implementasyonu
+tests/                     Sözleşmeyi yerelde çalıştıran simülatör ve testler
+scripts/deploy.ts          Preprod'a deploy script'i
+frontend/                  Web arayüzü (Level 2 kapsamında)
+```
+
+## Kurulum
+
+Gerekenler:
+
+- Node.js 22 veya üstü
+- Docker (proof server için)
+- Compact araç zinciri ve compiler 0.31.1. Windows'ta WSL (Ubuntu) içinde kurulmalı.
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+compact update 0.31.1
+```
+
+Compiler sürümü önemli. Stabil Midnight SDK'sı (midnight-js 4.x) compact-runtime 0.16 kullanıyor. Bu runtime'ı 0.31.1 üretiyor, daha yeni compiler'lar farklı bir runtime'a göre kod üretiyor.
+
+Bağımlılıkları kurun:
+
+```bash
+npm install
+```
+
+### Derleme
+
+```bash
+npm run compile
+```
+
+Bu komut `compact compile +0.31.1 burs_eligibility.compact managed/burs_eligibility` çalıştırıyor ve `managed/` dizinini yeniden oluşturuyor.
+
+![Derleme çıktısı](docs/compile.png)
+
+### Testler
+
+```bash
+npm test
+```
+
+Testler derlenmiş sözleşmeyi `compact-runtime` üzerinde gerçekten çalıştırıyor ve geliri private witness olarak veriyor. Kontrol edilen durumlar: eşiğin altında, üstünde ve eşitinde gelir, sıfır gelir, deploy sonrası ledger durumu ve ledger'da gelire dair hiçbir alanın bulunmaması.
+
+### Preprod'a deploy
+
+1. Proof server'ı başlatın:
+
    ```bash
-   compact compile burs_eligibility.compact .
-   ```
-3. Testleri çalıştırmak için paketleri yükleyip Jest testlerini başlatın:
-   ```bash
-   npm install
-   npm test
+   docker run -d --name midnight-proof-server -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
    ```
 
-### Dağıtım (Deploy) Bilgileri
-* **Ağ:** Midnight Preprod
-* **Contract Address:** `<DEPLOY_EDILINCE_BURAYA_YAZILACAK>`
+2. Deploy script'ini çalıştırın:
+
+   ```bash
+   npm run deploy
+   ```
+
+   İlk çalıştırmada script yeni bir cüzdan oluşturuyor ve seed'ini `.env` dosyasına yazıyor. `.env` git'e dahil değil. Seed'i ayrıca güvenli bir yerde saklayın.
+
+3. Script cüzdanın unshielded adresini yazdırıyor. Bu adrese [Preprod faucet](https://faucet.preprod.midnight.network) üzerinden tNIGHT gönderin.
+
+4. Script tNIGHT'ı görünce onu DUST üretimine kaydediyor. İşlem ücretleri DUST ile ödeniyor ve DUST, tuttuğunuz NIGHT'tan zamanla üretiliyor. Bu yüzden DUST'ı başka bir yerden transfer etmeniz ya da takaslamanız gerekmiyor. Bakiye oluşunca sözleşme `threshold = 10000` ile deploy ediliyor ve adres `deployment-preprod.json` dosyasına yazılıyor.
+
+## Deploy bilgileri
+
+- Ağ: Midnight Preprod
+- Contract address: `<DEPLOY_SONRASI_EKLENECEK>`
+
+![Deploy çıktısı](docs/deploy.png)
