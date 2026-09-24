@@ -1,28 +1,28 @@
 import type * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
 
 export type Witnesses<PS> = {
+  familyIncome(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, bigint];
 }
 
 export type ImpureCircuits<PS> = {
-  check_eligibility(context: __compactRuntime.CircuitContext<PS>,
-                    income_0: bigint): Promise<__compactRuntime.CircuitResults<PS, boolean>>;
+  check_eligibility(context: __compactRuntime.CircuitContext<PS>): Promise<__compactRuntime.CircuitResults<PS, boolean>>;
 }
 
 export type ProvableCircuits<PS> = {
-  check_eligibility(context: __compactRuntime.CircuitContext<PS>,
-                    income_0: bigint): Promise<__compactRuntime.CircuitResults<PS, boolean>>;
+  check_eligibility(context: __compactRuntime.CircuitContext<PS>): Promise<__compactRuntime.CircuitResults<PS, boolean>>;
 }
 
 export type PureCircuits = {
 }
 
 export type Circuits<PS> = {
-  check_eligibility(context: __compactRuntime.CircuitContext<PS>,
-                    income_0: bigint): Promise<__compactRuntime.CircuitResults<PS, boolean>>;
+  check_eligibility(context: __compactRuntime.CircuitContext<PS>): Promise<__compactRuntime.CircuitResults<PS, boolean>>;
 }
 
 export type Ledger = {
   readonly threshold: bigint;
+  readonly totalChecks: bigint;
+  readonly eligibleCount: bigint;
 }
 
 export type ContractReferenceLocations = any;

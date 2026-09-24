@@ -8,13 +8,6 @@
       "pure": false,
       "proof": true,
       "arguments": [
-        {
-          "name": "income",
-          "type": {
-            "type-name": "Uint",
-            "maxval": 18446744073709551615
-          }
-        }
       ],
       "result-type": {
         "type-name": "Boolean"
@@ -22,6 +15,15 @@
     }
   ],
   "witnesses": [
+    {
+      "name": "familyIncome",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Uint",
+        "maxval": 18446744073709551615
+      }
+    }
   ],
   "contracts": [
   ],
@@ -35,6 +37,18 @@
         "type-name": "Uint",
         "maxval": 18446744073709551615
       }
+    },
+    {
+      "name": "totalChecks",
+      "index": 1,
+      "exported": true,
+      "storage": "Counter"
+    },
+    {
+      "name": "eligibleCount",
+      "index": 2,
+      "exported": true,
+      "storage": "Counter"
     }
   ]
 }

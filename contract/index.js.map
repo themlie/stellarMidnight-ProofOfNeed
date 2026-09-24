@@ -1,8 +1,0 @@
-{
-  "version": 3,
-  "file": "index.js",
-  "sourceRoot": "../",
-  "sources": ["burs_eligibility.compact"],
-  "names": [],
-  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAIA;;;;;;;;;;MAIA,AAAA,iBAEC;;;;;cAFgC,QAAgB;;;;;;;;;;;;;;;;;;yCAAhB,QAAgB;;;;;;;;;yDAAhB,QAAgB;;;;OAEhD;;;;;;;;GAJA;EAFD;;;;;UAAY,mBAA2B;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAFvC;;;;;;;;;yEAAkC;IAG9B;;;;;;;2HAAqB,mBAAiB;;yEAA7B;;;;;;;GACZ;EAED,AAAA,0BAEC,4BAFgC,QAAgB;WACtC,QAAM;;mCAAG;;;;;;;;;;;wGAAS;GAC5B;;;;;;;;;;;;;;;;IARD;qCAAA;;;;;;;;;;;0GAAkC;KAAA;;;;;;;;;;;;;;"
-}
