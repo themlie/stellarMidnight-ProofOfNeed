@@ -34,14 +34,13 @@ export class BursSimulator {
   /** Calls check_eligibility with `income` as the student's private witness. */
   async checkEligibility(income: bigint): Promise<boolean> {
     const context = createCircuitContext(
-      'check_eligibility',
       this.address,
       DUMMY_COIN_PUBLIC_KEY,
       this.state,
       createBursPrivateState(income),
     );
-    const { result, context: after } = await this.contract.circuits.check_eligibility(context);
-    this.state = after.callContext.currentQueryContext.state;
+    const { result, context: after } = this.contract.circuits.check_eligibility(context);
+    this.state = after.currentQueryContext.state;
     return result;
   }
 

@@ -5,18 +5,18 @@ export type Witnesses<PS> = {
 }
 
 export type ImpureCircuits<PS> = {
-  check_eligibility(context: __compactRuntime.CircuitContext<PS>): Promise<__compactRuntime.CircuitResults<PS, boolean>>;
+  check_eligibility(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, boolean>;
 }
 
 export type ProvableCircuits<PS> = {
-  check_eligibility(context: __compactRuntime.CircuitContext<PS>): Promise<__compactRuntime.CircuitResults<PS, boolean>>;
+  check_eligibility(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, boolean>;
 }
 
 export type PureCircuits = {
 }
 
 export type Circuits<PS> = {
-  check_eligibility(context: __compactRuntime.CircuitContext<PS>): Promise<__compactRuntime.CircuitResults<PS, boolean>>;
+  check_eligibility(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, boolean>;
 }
 
 export type Ledger = {
@@ -36,9 +36,8 @@ export declare class Contract<PS = any, W extends Witnesses<PS> = Witnesses<PS>>
   provableCircuits: ProvableCircuits<PS>;
   constructor(witnesses: W);
   initialState(context: __compactRuntime.ConstructorContext<PS>,
-               initial_threshold_0: bigint): Promise<__compactRuntime.ConstructorResult<PS>>;
+               initial_threshold_0: bigint): __compactRuntime.ConstructorResult<PS>;
 }
 
 export declare function ledger(state: __compactRuntime.StateValue | __compactRuntime.ChargedState): Ledger;
 export declare const pureCircuits: PureCircuits;
-export declare const expectedVk: Record<string, string>;
