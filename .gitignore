@@ -2,3 +2,4 @@ node_modules/
 dist/
 .env
 coverage/
+midnight-level-db/
