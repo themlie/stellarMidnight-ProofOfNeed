@@ -3,3 +3,4 @@ dist/
 .env
 coverage/
 midnight-level-db/
+.wallet-cache/

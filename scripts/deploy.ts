@@ -1,10 +1,10 @@
 /**
  * BursEligibility — Preprod deploy script
  *
- * Kullanım:
- *   1. Proof server'ı başlat:
- *        docker run -d --name midnight-proof-server -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
- *   2. npm run deploy
+ * Kullanım: npm run deploy
+ *
+ * ZK proof'lar varsayılan olarak Node içinde WASM ile üretilir; Docker gerekmez.
+ * Yerel bir proof server kullanmak için PROOF_SERVER_URL ortam değişkenini verin.
  *
  * İlk çalıştırmada .env içinde MIDNIGHT_SEED yoksa yeni bir cüzdan seed'i üretilir
  * ve .env'e yazılır. Script cüzdanın unshielded adresini yazdırır; bu adrese
@@ -25,8 +25,14 @@ import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-p
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import type { MidnightProvider, WalletProvider } from '@midnight-ntwrk/midnight-js-types';
+import {
+  createProofProvider,
+  type MidnightProvider,
+  type ProofProvider,
+  type WalletProvider,
+} from '@midnight-ntwrk/midnight-js-types';
 import { InMemoryTransactionHistoryStorage } from '@midnight-ntwrk/wallet-sdk-abstractions';
+import { makeWasmProvingService } from '@midnight-ntwrk/wallet-sdk-capabilities/proving';
 import { DustWallet } from '@midnight-ntwrk/wallet-sdk-dust-wallet';
 import {
   WalletEntrySchema,
@@ -35,6 +41,7 @@ import {
   type FacadeState,
 } from '@midnight-ntwrk/wallet-sdk-facade';
 import { HDWallet, Roles, generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
+import { WasmProver } from '@midnight-ntwrk/wallet-sdk-prover-client/effect';
 import { ShieldedWallet } from '@midnight-ntwrk/wallet-sdk-shielded';
 import {
   PublicKey,
@@ -42,6 +49,8 @@ import {
   createKeystore,
   type UnshieldedKeystore,
 } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+import type { KeyMaterialProvider } from '@midnight-ntwrk/zkir-v2';
+import { Effect } from 'effect';
 import * as Rx from 'rxjs';
 import { WebSocket } from 'ws';
 
@@ -55,6 +64,7 @@ import { createBursPrivateState, witnesses, type BursPrivateState } from '../src
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const ENV_PATH = path.join(ROOT, '.env');
+const WALLET_CACHE_DIR = path.join(ROOT, '.wallet-cache');
 
 // ─── Network configuration (Preprod) ──────────────────────────────────────────
 const CONFIG = {
@@ -62,7 +72,8 @@ const CONFIG = {
   indexerHttpUrl: 'https://indexer.preprod.midnight.network/api/v4/graphql',
   indexerWsUrl: 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws',
   nodeUrl: 'https://rpc.preprod.midnight.network',
-  proofServerUrl: process.env.PROOF_SERVER_URL ?? 'http://127.0.0.1:6300',
+  // Optional: prove through a local proof server instead of in-process WASM.
+  proofServerUrl: process.env.PROOF_SERVER_URL,
   faucetUrl: 'https://faucet.preprod.midnight.network',
   zkConfigDir: path.join(ROOT, 'managed', 'burs_eligibility'),
 } as const;
@@ -98,21 +109,51 @@ const deriveKeys = (seedHex: string) => {
   return derived.keys;
 };
 
-const isProofServerUp = async () => {
+// ─── Wallet sync cache ────────────────────────────────────────────────────────
+// A first sync replays the whole Preprod history and takes a long time, so the
+// synced wallet state is saved locally and restored on the next run.
+
+type WalletCache = { shielded: string; unshielded: string; dust: string };
+
+const walletCachePath = (seed: string) =>
+  path.join(WALLET_CACHE_DIR, `${createHash('sha256').update(seed).digest('hex').slice(0, 16)}.json`);
+
+const loadWalletCache = (seed: string): WalletCache | undefined => {
   try {
-    return (await fetch(`${CONFIG.proofServerUrl}/health`)).ok;
+    return JSON.parse(fs.readFileSync(walletCachePath(seed), 'utf8')) as WalletCache;
   } catch {
-    return false;
+    return undefined;
   }
 };
 
-/** Proofs are needed from DUST registration onwards, so wait for the server instead of exiting. */
-const waitForProofServer = async () => {
-  if (await isProofServerUp()) return;
-  console.log(`⏳ Proof server'a ulaşılamıyor (${CONFIG.proofServerUrl}). Başlatın, script bekliyor:`);
-  console.log('   docker run -d --name midnight-proof-server -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v');
-  while (!(await isProofServerUp())) await new Promise((r) => setTimeout(r, 5000));
-  console.log('✅ Proof server çalışıyor\n');
+const saveWalletCache = async (wallet: WalletFacade, seed: string) => {
+  const state = await Rx.firstValueFrom(wallet.state());
+  const cache: WalletCache = {
+    shielded: state.shielded.serialize(),
+    unshielded: state.unshielded.serialize(),
+    dust: state.dust.serialize(),
+  };
+  fs.mkdirSync(WALLET_CACHE_DIR, { recursive: true });
+  fs.writeFileSync(walletCachePath(seed), JSON.stringify(cache));
+};
+
+type CircuitId = 'check_eligibility';
+
+/**
+ * Supplies proving keys to the in-process WASM prover: this contract's circuit
+ * keys come from managed/, the built-in zswap/dust keys and SRS parameters are
+ * downloaded by the wallet SDK's default provider.
+ */
+const makeKeyMaterialProvider = (zkConfigProvider: NodeZkConfigProvider<CircuitId>): KeyMaterialProvider => {
+  const builtIn = WasmProver.makeDefaultKeyMaterialProvider();
+  return {
+    lookupKey: async (keyLocation) => {
+      if (keyLocation !== 'check_eligibility') return builtIn.lookupKey(keyLocation);
+      const { proverKey, verifierKey, zkir } = await zkConfigProvider.get(keyLocation);
+      return { proverKey, verifierKey, ir: zkir };
+    },
+    getParams: (k) => builtIn.getParams(k),
+  };
 };
 
 const waitFor = (wallet: WalletFacade, predicate: (s: FacadeState) => boolean) =>
@@ -136,7 +177,6 @@ const ensureDust = async (wallet: WalletFacade, keystore: UnshieldedKeystore) =>
     console.log(`✅ tNIGHT geldi: ${nightBalance(state)}\n`);
   }
 
-  await waitForProofServer();
   const unregistered = state.unshielded.availableCoins.filter((c) => !c.meta.registeredForDustGeneration);
   if (unregistered.length > 0) {
     console.log(`⏳ ${unregistered.length} tNIGHT UTXO'su DUST üretimine kaydediliyor...`);
@@ -169,25 +209,44 @@ async function main() {
   const dustSecretKey = ledger.DustSecretKey.fromSeed(keys[Roles.Dust]);
   const unshieldedKeystore = createKeystore(keys[Roles.NightExternal], networkId);
 
+  const zkConfigProvider = new NodeZkConfigProvider<CircuitId>(CONFIG.zkConfigDir);
+  const keyMaterialProvider = makeKeyMaterialProvider(zkConfigProvider);
+  console.log(
+    CONFIG.proofServerUrl
+      ? `🧮 Proof'lar proof server ile üretilecek: ${CONFIG.proofServerUrl}`
+      : "🧮 Proof'lar yerelde WASM ile üretilecek (ilk seferde anahtarlar indirilir)",
+  );
+
   const indexerClientConnection = {
     indexerHttpUrl: CONFIG.indexerHttpUrl,
     indexerWsUrl: CONFIG.indexerWsUrl,
   };
 
+  const cached = loadWalletCache(seed);
+  if (cached) console.log('💾 Önbellekteki cüzdan durumu yükleniyor, senkronizasyon kaldığı yerden devam edecek.');
+
   const wallet = await WalletFacade.init({
     configuration: {
       networkId,
       indexerClientConnection,
-      provingServerUrl: new URL(CONFIG.proofServerUrl),
+      ...(CONFIG.proofServerUrl ? { provingServerUrl: new URL(CONFIG.proofServerUrl) } : {}),
       relayURL: new URL(CONFIG.nodeUrl.replace(/^http/, 'ws')),
       txHistoryStorage: new InMemoryTransactionHistoryStorage(WalletEntrySchema, mergeWalletEntries),
       costParameters: { additionalFeeOverhead: 300_000_000_000_000n, feeBlocksMargin: 5 },
     },
-    shielded: (config) => ShieldedWallet(config).startWithSecretKeys(shieldedSecretKeys),
+    ...(CONFIG.proofServerUrl ? {} : { provingService: () => makeWasmProvingService({ keyMaterialProvider }) }),
+    shielded: (config) =>
+      cached
+        ? ShieldedWallet(config).restore(cached.shielded)
+        : ShieldedWallet(config).startWithSecretKeys(shieldedSecretKeys),
     unshielded: (config) =>
-      UnshieldedWallet(config).startWithPublicKey(PublicKey.fromKeyStore(unshieldedKeystore)),
+      cached
+        ? UnshieldedWallet(config).restore(cached.unshielded)
+        : UnshieldedWallet(config).startWithPublicKey(PublicKey.fromKeyStore(unshieldedKeystore)),
     dust: (config) =>
-      DustWallet(config).startWithSecretKey(dustSecretKey, ledger.LedgerParameters.initialParameters().dust),
+      cached
+        ? DustWallet(config).restore(cached.dust)
+        : DustWallet(config).startWithSecretKey(dustSecretKey, ledger.LedgerParameters.initialParameters().dust),
   });
   await wallet.start(shieldedSecretKeys, dustSecretKey);
 
@@ -206,8 +265,12 @@ async function main() {
         `   shielded ${p(s.shielded.progress)} · unshielded ${p(s.unshielded.progress)} · dust ${p(s.dust.progress)} · heap ${heapMb} MB`,
       );
     });
+  // Save progress every minute so an interrupted first sync is not lost.
+  const cacheTimer = setInterval(() => void saveWalletCache(wallet, seed).catch(() => {}), 60_000);
   const synced = await waitFor(wallet, () => true);
   progressLog.unsubscribe();
+  clearInterval(cacheTimer);
+  await saveWalletCache(wallet, seed);
   console.log(`✅ Senkronize. tNIGHT: ${nightBalance(synced)}, DUST: ${dustBalance(synced)}\n`);
 
   await ensureDust(wallet, unshieldedKeystore);
@@ -228,7 +291,9 @@ async function main() {
     submitTx: (tx) => wallet.submitTransaction(tx),
   };
 
-  const zkConfigProvider = new NodeZkConfigProvider<'check_eligibility'>(CONFIG.zkConfigDir);
+  const proofProvider: ProofProvider = CONFIG.proofServerUrl
+    ? httpClientProofProvider(CONFIG.proofServerUrl, zkConfigProvider)
+    : createProofProvider(Effect.runSync(WasmProver.create({ keyMaterialProvider })).asProvingProvider());
   const providers = {
     privateStateProvider: levelPrivateStateProvider<'burs-eligibility', BursPrivateState>({
       privateStateStoreName: 'burs-eligibility-state',
@@ -237,12 +302,10 @@ async function main() {
     }),
     publicDataProvider: indexerPublicDataProvider(CONFIG.indexerHttpUrl, CONFIG.indexerWsUrl),
     zkConfigProvider,
-    proofProvider: httpClientProofProvider(CONFIG.proofServerUrl, zkConfigProvider),
+    proofProvider,
     walletProvider,
     midnightProvider: walletProvider,
   };
-
-  await waitForProofServer();
 
   // ─── Deploy ────────────────────────────────────────────────────────────────
   const compiledContract = CompiledContract.make('burs_eligibility', Contract).pipe(
@@ -280,6 +343,7 @@ async function main() {
   fs.writeFileSync(path.join(ROOT, 'deployment-preprod.json'), JSON.stringify(deploymentInfo, null, 2) + '\n');
   console.log('💾 deployment-preprod.json dosyasına kaydedildi.');
 
+  await saveWalletCache(wallet, seed);
   await wallet.stop();
   process.exit(0);
 }

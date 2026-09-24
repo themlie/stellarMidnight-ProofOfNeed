@@ -48,7 +48,6 @@ frontend/                  Web arayüzü (Level 2 kapsamında)
 Gerekenler:
 
 - Node.js 22 veya üstü
-- Docker (proof server için)
 - Compact araç zinciri ve compiler 0.31.1. Windows'ta WSL (Ubuntu) içinde kurulmalı.
 
 ```bash
@@ -84,13 +83,7 @@ Testler derlenmiş sözleşmeyi `compact-runtime` üzerinde gerçekten çalışt
 
 ### Preprod'a deploy
 
-1. Proof server'ı başlatın:
-
-   ```bash
-   docker run -d --name midnight-proof-server -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
-   ```
-
-2. Deploy script'ini çalıştırın:
+1. Deploy script'ini çalıştırın:
 
    ```bash
    npm run deploy
@@ -98,9 +91,18 @@ Testler derlenmiş sözleşmeyi `compact-runtime` üzerinde gerçekten çalışt
 
    İlk çalıştırmada script yeni bir cüzdan oluşturuyor ve seed'ini `.env` dosyasına yazıyor. `.env` git'e dahil değil. Seed'i ayrıca güvenli bir yerde saklayın.
 
-3. Script cüzdanın unshielded adresini yazdırıyor. Bu adrese [Preprod faucet](https://faucet.preprod.midnight.network) üzerinden tNIGHT gönderin.
+   İlk senkronizasyon Preprod geçmişinin tamamını taradığı için uzun sürüyor. Script ilerlemeyi dakikada bir `.wallet-cache/` klasörüne kaydediyor, bir sonraki çalıştırma kaldığı yerden devam ediyor.
 
-4. Script tNIGHT'ı görünce onu DUST üretimine kaydediyor. İşlem ücretleri DUST ile ödeniyor ve DUST, tuttuğunuz NIGHT'tan zamanla üretiliyor. Bu yüzden DUST'ı başka bir yerden transfer etmeniz ya da takaslamanız gerekmiyor. Bakiye oluşunca sözleşme `threshold = 10000` ile deploy ediliyor ve adres `deployment-preprod.json` dosyasına yazılıyor.
+2. Script cüzdanın unshielded adresini yazdırıyor. Bu adrese [Preprod faucet](https://faucet.preprod.midnight.network) üzerinden tNIGHT gönderin.
+
+3. Script tNIGHT'ı görünce onu DUST üretimine kaydediyor. İşlem ücretleri DUST ile ödeniyor ve DUST, tuttuğunuz NIGHT'tan zamanla üretiliyor. Bu yüzden DUST'ı başka bir yerden transfer etmeniz ya da takaslamanız gerekmiyor. Bakiye oluşunca sözleşme `threshold = 10000` ile deploy ediliyor ve adres `deployment-preprod.json` dosyasına yazılıyor.
+
+ZK proof'lar Node içinde WASM ile üretiliyor, yani Docker gerekmiyor. Bu contract'ın anahtarları `managed/` klasöründen okunuyor, cüzdanın kendi zswap/dust anahtarları ise ilk kullanımda indiriliyor. Yerel bir proof server kullanmak isterseniz:
+
+```bash
+docker run -d -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
+PROOF_SERVER_URL=http://127.0.0.1:6300 npm run deploy
+```
 
 ## Deploy bilgileri
 
