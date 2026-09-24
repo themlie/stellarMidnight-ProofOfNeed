@@ -193,7 +193,21 @@ async function main() {
 
   console.log(`👛 Cüzdan adresi (unshielded): ${unshieldedKeystore.getBech32Address().asString()}`);
   console.log('⏳ Cüzdan senkronize ediliyor (ilk seferde birkaç dakika sürebilir)...');
+  const progressLog = wallet
+    .state()
+    .pipe(Rx.throttleTime(15_000))
+    .subscribe((s) => {
+      const p = (x: unknown) => {
+        const { appliedIndex, highestIndex } = x as { appliedIndex?: bigint; highestIndex?: bigint };
+        return `${appliedIndex ?? '?'}/${highestIndex ?? '?'}`;
+      };
+      const heapMb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+      console.log(
+        `   shielded ${p(s.shielded.progress)} · unshielded ${p(s.unshielded.progress)} · dust ${p(s.dust.progress)} · heap ${heapMb} MB`,
+      );
+    });
   const synced = await waitFor(wallet, () => true);
+  progressLog.unsubscribe();
   console.log(`✅ Senkronize. tNIGHT: ${nightBalance(synced)}, DUST: ${dustBalance(synced)}\n`);
 
   await ensureDust(wallet, unshieldedKeystore);
