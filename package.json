@@ -1,7 +1,7 @@
 {
-  "name": "burs_contract",
+  "name": "proof-of-need",
   "version": "1.0.0",
-  "description": "İ2 BURS — prove scholarship eligibility on Midnight without revealing income",
+  "description": "ProofOfNeed: prove scholarship eligibility on Midnight without revealing income",
   "main": "index.js",
   "scripts": {
     "compile": "compact compile +0.31.1 burs_eligibility.compact managed/burs_eligibility",
@@ -44,5 +44,9 @@
   "overrides": {
     "@midnight-ntwrk/ledger-v8": "8.1.2",
     "@midnight-ntwrk/wallet-sdk-dust-wallet": "4.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/themlie/stellarMidnight-ProofOfNeed.git"
   }
 }

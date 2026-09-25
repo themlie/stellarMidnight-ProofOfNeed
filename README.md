@@ -1,10 +1,10 @@
-# İ2 BURS: İhtiyacını kanıtla, gelirini söyleme
+# ProofOfNeed: İhtiyacını kanıtla, gelirini söyleme
 
-İ2 BURS, Midnight üzerinde çalışan bir burs uygunluk sözleşmesi. Öğrenci, ailesinin gelirinin vakfın belirlediği eşiğin altında olduğunu sıfır bilgi kanıtıyla ispatlıyor. Gelirin kendisi ne zincire yazılıyor ne de öğrencinin cihazından çıkıyor.
+ProofOfNeed, Midnight üzerinde çalışan bir burs uygunluk sözleşmesi. Öğrenci, ailesinin gelirinin vakfın belirlediği eşiğin altında olduğunu sıfır bilgi kanıtıyla ispatlıyor. Gelirin kendisi ne zincire yazılıyor ne de öğrencinin cihazından çıkıyor.
 
 ## Ürün fikri
 
-Bugün burs başvurusu yapan bir öğrenci, ailesinin gelirini, mesleğini ve iş yerini bir memura ya da vakıf görevlisine açmak zorunda. Bu hem gereğinden fazla kişisel verinin toplanması demek hem de birçok aile için utanç verici bir süreç. Vakfın aslında bilmesi gereken tek şey "bu öğrenci eşiğin altında mı?" sorusunun cevabı. İ2 BURS'ta vakıf eşiği zincire yazıyor, öğrenci gelirini sadece kendi cihazında kullanarak bir kanıt üretiyor ve ağ bu kanıtı doğruluyor. Vakıf evet/hayır cevabını görüyor, rakamı hiçbir zaman görmüyor. İlerleyen aşamalarda uygun bulunan öğrencilere bağışçı fonlarından aylık ödeme yapılması planlanıyor.
+Bugün burs başvurusu yapan bir öğrenci, ailesinin gelirini, mesleğini ve iş yerini bir memura ya da vakıf görevlisine açmak zorunda. Bu hem gereğinden fazla kişisel verinin toplanması demek hem de birçok aile için utanç verici bir süreç. Vakfın aslında bilmesi gereken tek şey "bu öğrenci eşiğin altında mı?" sorusunun cevabı. ProofOfNeed'de vakıf eşiği zincire yazıyor, öğrenci gelirini sadece kendi cihazında kullanarak bir kanıt üretiyor ve ağ bu kanıtı doğruluyor. Vakıf evet/hayır cevabını görüyor, rakamı hiçbir zaman görmüyor. İlerleyen aşamalarda uygun bulunan öğrencilere bağışçı fonlarından aylık ödeme yapılması planlanıyor.
 
 ## Public state ve private witness
 
@@ -57,9 +57,11 @@ compact update 0.31.1
 
 Compiler sürümü önemli. Stabil Midnight SDK'sı (midnight-js 4.x) compact-runtime 0.16 kullanıyor. Bu runtime'ı 0.31.1 üretiyor, daha yeni compiler'lar farklı bir runtime'a göre kod üretiyor.
 
-Bağımlılıkları kurun:
+Repoyu klonlayıp bağımlılıkları kurun:
 
 ```bash
+git clone https://github.com/themlie/stellarMidnight-ProofOfNeed.git
+cd stellarMidnight-ProofOfNeed
 npm install
 ```
 

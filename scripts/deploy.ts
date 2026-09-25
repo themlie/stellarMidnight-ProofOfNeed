@@ -1,5 +1,5 @@
 /**
- * BursEligibility — Preprod deploy script
+ * ProofOfNeed (BursEligibility contract) — Preprod deploy script
  *
  * Kullanım: npm run deploy
  *
@@ -197,7 +197,7 @@ const ensureDust = async (wallet: WalletFacade, keystore: UnshieldedKeystore) =>
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('🌑 İ2 BURS — Preprod deploy\n');
+  console.log('🌑 ProofOfNeed — Preprod deploy\n');
 
   setNetworkId(CONFIG.networkId);
   const networkId = getNetworkId();
