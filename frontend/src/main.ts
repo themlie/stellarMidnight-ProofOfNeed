@@ -1,13 +1,6 @@
-// Extend window interface for Midnight DApp Connector
-declare global {
-  interface Window {
-    midnight?: {
-      mnLace?: {
-        enable: () => Promise<any>;
-      };
-    };
-  }
-}
+import './polyfills';
+import { CONTRACT_ADDRESS, findIncomeInTx, findWallet, preprodPublicData, ProofOfNeedSession, readPublicLedger } from './midnight';
+import type { Ledger } from '../../managed/burs_eligibility/contract/index.js';
 
 (window as any).openRoleModal = function() {
   const modal = document.getElementById('role-modal');
@@ -44,245 +37,226 @@ let userRole = 'student';
   await (window as any).connectWallet();
 };
 
-// Global UI functions to replace inline scripts in index.html
-(window as any).connectWallet = async function() {
-  const btn = document.getElementById('btn-nav-connect');
-  let originalHTML = '';
-  if (btn) {
-    originalHTML = btn.innerHTML;
-    const textConnecting = currentLang === 'tr' ? 'Bağlanıyor...' : 'Connecting...';
-    btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> ${textConnecting}`;
-    btn.classList.add('opacity-80', 'cursor-not-allowed');
+// ==========================================
+// MIDNIGHT: LACE CONNECTION, ELIGIBILITY PROOF, PUBLIC LEDGER
+// ==========================================
+let session: ProofOfNeedSession | undefined;
+
+const el = (id: string) => document.getElementById(id)!;
+const shorten = (s: string, head = 10, tail = 6) => (s.length > head + tail + 3 ? `${s.slice(0, head)}…${s.slice(-tail)}` : s);
+const formatDust = (specks: bigint) => `${(Number(specks) / 1e15).toLocaleString(undefined, { maximumFractionDigits: 2 })} DUST`;
+const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const t = (en: string, tr: string) => (currentLang === 'tr' ? tr : en);
+
+const SPINNER = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+
+const renderContractAddress = () => {
+  for (const id of ['student-contract-address', 'foundation-contract-address']) {
+    const node = document.getElementById(id);
+    if (node) node.textContent = CONTRACT_ADDRESS;
   }
+};
+
+/** Reads threshold / totalChecks / eligibleCount from the Preprod indexer. */
+const refreshLedger = async (): Promise<Ledger | null> => {
+  renderContractAddress();
+  try {
+    const state = await readPublicLedger(session?.publicData ?? preprodPublicData());
+    if (!state) return null;
+    const set = (id: string, v: bigint) => {
+      const node = document.getElementById(id);
+      if (node) node.textContent = v.toString();
+    };
+    set('ledger-threshold', state.threshold);
+    set('ledger-total', state.totalChecks);
+    set('ledger-eligible', state.eligibleCount);
+    set('student-threshold', state.threshold);
+    return state;
+  } catch (err) {
+    console.error('Could not read the public ledger', err);
+    return null;
+  }
+};
+(window as any).refreshLedger = refreshLedger;
+
+(window as any).connectWallet = async function () {
+  const btn = el('btn-nav-connect');
+  const originalHTML = btn.innerHTML;
+  btn.innerHTML = `${SPINNER} ${t('Connecting...', 'Bağlanıyor...')}`;
+  btn.classList.add('opacity-80', 'cursor-not-allowed');
 
   try {
-    // Try to find the correct DApp Connector API
-    const midnightKeys = window.midnight ? Object.keys(window.midnight) : [];
-    
-    // Find the right object to enable
-    let dAppConnector;
-    if (midnightKeys.length > 0) {
-      // Midnight eklentisi rastgele (UUID) bir isimle kendini ekliyor, ilkini alıyoruz
-      const walletKey = midnightKeys[0];
-      const walletProvider = (window.midnight as any)[walletKey];
-      
-      // Midnight API v4.x ve sonrasında enable() yerine connect(networkId) kullanılıyor
-      if (typeof walletProvider.connect === 'function') {
-        dAppConnector = await walletProvider.connect('preview');
-      } else if (typeof walletProvider.enable === 'function') {
-        dAppConnector = await walletProvider.enable();
-      } else {
-        alert(currentLang === 'tr' ? "Cüzdan bulundu ancak bağlantı metodu bulunamadı." : "Wallet found but connect method is missing.");
-        enableDemoMode();
-        return;
-      }
-    } else {
-      alert(currentLang === 'tr' ? "Cüzdan sayfaya erişemiyor." : "Wallet extension cannot access the page.");
-      enableDemoMode();
+    const wallet = findWallet();
+    if (!wallet) {
+      alert(
+        t(
+          'No Midnight wallet found. Install the Lace wallet extension, switch it to Preprod and reload this page.',
+          'Midnight cüzdanı bulunamadı. Lace eklentisini kurun, Preprod ağına alın ve sayfayı yenileyin.',
+        ),
+      );
       return;
     }
-    if (typeof dAppConnector.state === 'function') {
-      const state = await dAppConnector.state();
-      const address = state.address || "0x000...0000";
-      const shortAddress = address.substring(0, 6) + "..." + address.substring(address.length - 4);
-      document.getElementById('wallet-address-display')!.innerText = shortAddress;
-    } else {
-      // Midnight v4.x API (yeni versiyon) - getDustAddress veya getUnshieldedAddresses kullanılıyor
-      let addressStr = currentLang === 'tr' ? "Bağlandı" : "Connected";
-      try {
-        if (typeof dAppConnector.getDustAddress === 'function') {
-          const dustAddr = await dAppConnector.getDustAddress();
-          addressStr = typeof dustAddr === 'string' ? dustAddr : String(dustAddr);
-        } else if (typeof dAppConnector.getUnshieldedAddresses === 'function') {
-          const addrs = await dAppConnector.getUnshieldedAddresses();
-          if (addrs && addrs.length > 0) {
-            addressStr = typeof addrs[0] === 'string' ? addrs[0] : String(addrs[0]);
-          }
-        }
-      } catch (err) {
-        console.error("Adres alınırken hata:", err);
-      }
-      
-      const shortAddress = addressStr.length > 10 
-        ? addressStr.substring(0, 6) + "..." + addressStr.substring(addressStr.length - 4) 
-        : addressStr;
-      
-      document.getElementById('wallet-address-display')!.innerText = shortAddress;
-    }
-    
-    enableDemoMode(); // Switch UI state
+
+    session = await ProofOfNeedSession.connect(wallet);
+    el('wallet-address-display').textContent = shorten(session.info.unshieldedAddress, 12, 6);
+    el('wallet-address-display').title = session.info.unshieldedAddress;
+    el('wallet-dust-display').textContent = formatDust(session.info.dustBalance);
+
+    enableDemoMode();
+    await refreshLedger();
   } catch (error) {
-    console.error("Cüzdan bağlantısı reddedildi veya hata oluştu:", error);
-    alert(currentLang === 'tr' ? "Cüzdan bağlantısı başarısız oldu: " : "Wallet connection failed: " + (error as Error).message);
+    console.error('Wallet connection failed', error);
+    session = undefined;
+    alert(`${t('Wallet connection failed: ', 'Cüzdan bağlantısı başarısız oldu: ')}${(error as Error).message}`);
   } finally {
-    if (btn) {
-      btn.innerHTML = originalHTML;
-      btn.classList.remove('opacity-80', 'cursor-not-allowed');
-    }
+    btn.innerHTML = originalHTML;
+    btn.classList.remove('opacity-80', 'cursor-not-allowed');
   }
 };
 
-(window as any).disconnectWallet = function() {
-  document.getElementById('view-landing')!.classList.remove('hidden');
-  document.getElementById('view-dashboard')!.classList.add('hidden');
-  document.getElementById('view-dashboard')!.classList.remove('grid');
-  
-  document.getElementById('btn-nav-connect')!.classList.remove('hidden');
-  document.getElementById('wallet-connected')!.classList.add('hidden');
-  document.getElementById('wallet-connected')!.classList.remove('flex');
+(window as any).disconnectWallet = function () {
+  // DApp connector v4 has no revoke call; dropping the session forgets the
+  // connected API and every provider built on it (including in-memory private state).
+  session = undefined;
+
+  el('view-landing').classList.remove('hidden');
+  el('view-dashboard').classList.add('hidden');
+  el('view-dashboard').classList.remove('grid');
+  el('btn-nav-connect').classList.remove('hidden');
+  el('wallet-connected').classList.add('hidden');
+  el('wallet-connected').classList.remove('flex');
+  el('wallet-address-display').textContent = '';
+  el('proof-result').classList.add('hidden');
+  el('privacy-check').classList.add('hidden');
 };
 
-(window as any).switchTab = function(tabId: string) {
-  // Hide all content
-  document.getElementById('content-student')!.classList.add('hidden');
-  document.getElementById('content-foundation')!.classList.add('hidden');
-  document.getElementById('content-list')!.classList.add('hidden');
-  
-  // Reset all tabs
-  const tabs = ['student', 'foundation', 'list'];
-  tabs.forEach(t => {
-    const el = document.getElementById('tab-' + t)!;
-    el.classList.remove('border-brand-brown', 'text-[#1A1A1A]');
-    el.classList.add('border-transparent', 'text-dim');
-  });
-
-  // Show selected content
-  document.getElementById('content-' + tabId)!.classList.remove('hidden');
-  document.getElementById('content-' + tabId)!.classList.add('flex');
-  
-  // Highlight selected tab
-  const selected = document.getElementById('tab-' + tabId)!;
-  selected.classList.add('border-brand-brown', 'text-[#1A1A1A]');
-  selected.classList.remove('border-transparent', 'text-dim');
+(window as any).switchTab = function (tabId: string) {
+  for (const t of ['student', 'foundation', 'list']) {
+    el('content-' + t).classList.add('hidden');
+    el('content-' + t).classList.remove('flex');
+    el('tab-' + t).classList.remove('border-brand-brown', 'text-[#1A1A1A]');
+    el('tab-' + t).classList.add('border-transparent', 'text-dim');
+  }
+  el('content-' + tabId).classList.remove('hidden');
+  el('content-' + tabId).classList.add('flex');
+  el('tab-' + tabId).classList.add('border-brand-brown', 'text-[#1A1A1A]');
+  el('tab-' + tabId).classList.remove('border-transparent', 'text-dim');
+  if (tabId !== 'student') void refreshLedger();
 };
 
-(window as any).fetchEDevlet = function() {
-  const btn = document.getElementById('btn-edevlet')!;
-  const input = document.getElementById('income-input') as HTMLInputElement;
-  const helper = document.getElementById('income-helper')!;
-
-  const textFetching = currentLang === 'tr' ? "Çekiliyor..." : "Fetching...";
-  btn.innerHTML = `<svg class="animate-spin h-3 w-3 inline mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> ${textFetching}`;
-  
-  setTimeout(() => {
-    input.value = "8500";
-    input.classList.add("bg-[#F5FBF5]", "border-[#4ADE80]");
-    const textSuccess = currentLang === 'tr' ? "e-Devlet kriptografik imzası başarıyla doğrulandı." : "e-Gov cryptographic signature successfully verified.";
-    const textSub = currentLang === 'tr' ? "Bu değer tarayıcınızdan asla çıkmaz." : "This value never leaves your browser.";
-    helper.innerHTML = `<span class="text-[#2E7D32] font-medium flex items-center gap-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> ${textSuccess}</span> ${textSub}`;
-    
-    const textVerified = currentLang === 'tr' ? "Doğrulandı" : "Verified";
-    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-1"><polyline points="20 6 9 17 4 12"></polyline></svg> ${textVerified}`;
-    btn.classList.add("bg-[#E8F5E9]", "text-[#2E7D32]", "border-[#2E7D32]/20");
-    btn.classList.remove("bg-[#e5f6fd]", "text-[#0288D1]");
-  }, 1500);
+const addLog = (msg: string) => {
+  const logs = el('zk-logs');
+  logs.insertAdjacentHTML('beforeend', `<div>&gt; ${msg}</div>`);
+  el('zk-terminal-block').scrollTop = el('zk-terminal-block').scrollHeight;
 };
 
-(window as any).generateProof = function() {
-  const btn = document.getElementById('btn-proof')!;
+const addApplicationRow = (txId: string, eligible: boolean, blockHeight: number) => {
+  document.getElementById('applications-empty')?.remove();
+  const now = new Date();
+  const badge = eligible
+    ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5E9] text-[#2E7D32]">eligible</span>'
+    : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#FDECEA] text-[#C62828]">not eligible</span>';
+  el('applications-table').insertAdjacentHTML(
+    'afterbegin',
+    `<tr class="border-b border-dim hover:bg-gray-50">
+      <td class="py-4 pl-2 text-sm text-dim">${now.toLocaleString()}</td>
+      <td class="py-4 font-mono text-sm" title="${txId}">${shorten(txId, 10, 8)}</td>
+      <td class="py-4">${badge}</td>
+      <td class="py-4 text-right pr-2 font-mono text-sm">${blockHeight}</td>
+    </tr>`,
+  );
+};
+
+const renderPrivacyCheck = (income: bigint, submittedTx: Uint8Array, before: Ledger | null, after: Ledger | null) => {
+  const found = findIncomeInTx(submittedTx, income);
+  const prover = session?.info.proverServerUri ?? t('the prover configured in Lace', "Lace'te ayarlı prover");
+  const counters = (l: Ledger | null) => (l ? `totalChecks=${l.totalChecks}, eligibleCount=${l.eligibleCount}` : '?');
+  const box = el('privacy-check');
+  box.innerHTML = `
+    <p class="font-semibold text-sm">${t('Privacy check for this proof', 'Bu kanıt için gizlilik kontrolü')}</p>
+    <ul class="text-xs flex flex-col gap-1.5">
+      <li>🔒 ${t('Income you typed', 'Girdiğiniz gelir')}: <span class="font-mono">${income}</span> ${t('(kept in this tab\'s memory, wiped after proving)', '(sekmenin belleğinde tutuldu, kanıttan sonra silindi)')}</li>
+      <li>🧮 ${t('Proof generated by', 'Kanıtı üreten')}: <span class="font-mono">${escapeHtml(prover)}</span> ${t('(runs on your machine)', '(sizin makinenizde çalışır)')}</li>
+      <li>📦 ${t('Transaction sent to Midnight', "Midnight'a gönderilen işlem")}: <span class="font-mono">${submittedTx.length}</span> bytes</li>
+      <li>${found ? '⚠️' : '✅'} ${t('Income bytes inside that transaction', 'Bu işlemin içinde gelirin byte karşılığı')}: <span class="font-semibold">${found ? t('found', 'bulundu') : t('not found', 'bulunamadı')}</span> <span class="text-dim">(${t('searched for the 64-bit value in both byte orders', '64-bit değer iki byte sırasıyla arandı')})</span></li>
+      <li>🌐 ${t('Public ledger before', 'Önceki public ledger')}: <span class="font-mono">${counters(before)}</span></li>
+      <li>🌐 ${t('Public ledger after', 'Sonraki public ledger')}: <span class="font-mono">${counters(after)}</span></li>
+    </ul>
+    <p class="text-xs text-dim">${t(
+      'The chain learned one bit (eligible or not) and a counter moved. The number that produced it was proven, never shown.',
+      'Zincir yalnızca tek bir bit öğrendi (uygun ya da değil) ve bir sayaç arttı. Bu sonucu üreten sayı kanıtlandı ama hiç gösterilmedi.',
+    )}</p>`;
+  box.classList.remove('hidden');
+  box.classList.add('flex');
+};
+
+(window as any).generateProof = async function () {
+  const btn = el('btn-proof');
+  const input = el('income-input') as HTMLInputElement;
+  const raw = input.value.trim();
+
+  if (!session) {
+    alert(t('Connect your Lace wallet first.', 'Önce Lace cüzdanınızı bağlayın.'));
+    return;
+  }
+  if (!/^\d+$/.test(raw)) {
+    alert(t('Enter your monthly family income as a whole number.', 'Aylık aile gelirinizi tam sayı olarak girin.'));
+    return;
+  }
+  const income = BigInt(raw);
+  if (income >= 2n ** 64n) {
+    alert(t('That number is too large.', 'Bu sayı çok büyük.'));
+    return;
+  }
+
   const originalHTML = btn.innerHTML;
-  
-  const textGenerating = currentLang === 'tr' ? "ZK Kanıtı Oluşturuluyor..." : "Generating ZK Proof...";
-  btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> ${textGenerating}`;
-  
-  const incomeInput = document.getElementById('income-input') as HTMLInputElement;
-  const income = incomeInput.value || '0';
-  const isEligible = parseInt(income) <= 10000;
+  btn.innerHTML = `${SPINNER} ${t('Proving and submitting...', 'Kanıtlanıyor ve gönderiliyor...')}`;
+  btn.setAttribute('disabled', 'true');
+  el('proof-result').classList.add('hidden');
+  el('privacy-check').classList.add('hidden');
 
-  // Terminal UI updates
-  document.getElementById('zk-code-block')!.classList.add('hidden');
-  const terminal = document.getElementById('zk-terminal-block')!;
-  terminal.classList.remove('hidden');
-  const logs = document.getElementById('zk-logs')!;
-  logs.innerHTML = ''; // Clear previous logs
-  
-  const addLog = (msg: string, delay: number) => {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        logs.innerHTML += `<div>> ${msg}</div>`;
-        terminal.scrollTop = terminal.scrollHeight;
-        resolve(true);
-      }, delay);
-    });
-  };
+  el('zk-auditor-container').classList.remove('hidden');
+  el('zk-code-block').classList.add('hidden');
+  el('zk-terminal-block').classList.remove('hidden');
+  el('zk-logs').innerHTML = '';
 
-  (async () => {
-    await addLog("Derlenmiş sözleşme (burs_eligibility.compact) yükleniyor...", 200);
-    await addLog("Lokal Proving Server ile bağlantı kuruluyor...", 600);
-    await addLog("Veriler doğrulanıyor (Gizli Veri: Gelir)...", 800);
-    await addLog(`ZK-SNARK kanıtı üretiliyor: income (${income}) <= threshold (10000)`, 1500);
-    
-    if (isEligible) {
-      await addLog("Kanıt BAŞARIYLA oluşturuldu! Ağa (Midnight) gönderiliyor...", 800);
-      await addLog("Ağ onayı (Blockfrost/Lace) bekleniyor...", 1200);
-      await addLog("İşlem onaylandı! Durum: Verified", 500);
-      
-      const textSuccessBtn = currentLang === 'tr' ? "Başarılı! Kanıt Ağa Gönderildi" : "Success! Proof Sent to Network";
-      btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> ${textSuccessBtn}`;
-      btn.classList.add('bg-green-600', 'hover:bg-green-700');
-      btn.classList.remove('bg-brand-brown', 'hover-bg-brand-brown');
+  try {
+    addLog(t('Reading public ledger from the Preprod indexer...', 'Public ledger Preprod indexer\'ından okunuyor...'));
+    const before = await refreshLedger();
+    addLog(t('Income stored as private state in memory (not sent anywhere).', 'Gelir bellekte private state olarak tutuluyor (hiçbir yere gönderilmiyor).'));
+    addLog(t('Running check_eligibility locally and asking Lace\'s prover for a ZK proof...', "check_eligibility yerelde çalıştırılıyor, Lace'in prover'ından ZK kanıtı isteniyor..."));
+    addLog(t('Lace will ask you to approve the transaction.', 'Lace işlemi onaylamanızı isteyecek.'));
 
-      // Add to list
-      const table = document.getElementById('applications-table')!;
-      const now = new Date();
-      const timeString = `${now.getDate()}.${now.getMonth()+1}.${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}`;
-      const hash = "0x" + Math.random().toString(16).slice(2, 10) + "..." + Math.random().toString(16).slice(2, 10);
-      
-      const newRow = `
-        <tr class="border-b border-dim hover:bg-gray-50">
-          <td class="py-4 pl-2 text-sm text-dim">${timeString}</td>
-          <td class="py-4 font-mono text-sm">${hash}</td>
-          <td class="py-4">
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5E9] text-[#2E7D32]">
-              Verified on Midnight
-            </span>
-          </td>
-          <td class="py-4 text-right pr-2">
-            <button class="border border-dim rounded-md px-3 py-1.5 text-xs font-medium hover:bg-gray-50 flex items-center gap-1 ml-auto">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-              Bursu Gönder
-            </button>
-          </td>
-        </tr>
-      `;
-      table.insertAdjacentHTML('afterbegin', newRow);
-    } else {
-      await addLog('<span class="text-red-500">HATA: Gelir eşiğin üzerinde. Kanıt oluşturulamadı (Constraint Failed).</span>', 800);
-      
-      const textFailedBtn = currentLang === 'tr' ? "Uygun Değilsiniz (Eşik Aşıldı)" : "Not Eligible (Threshold Exceeded)";
-      btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> ${textFailedBtn}`;
-      btn.classList.add('bg-red-600', 'hover:bg-red-700');
-      btn.classList.remove('bg-brand-brown', 'hover-bg-brand-brown');
-    }
+    const result = await session.checkEligibility(income);
+    input.value = '';
 
-    setTimeout(() => {
-      btn.innerHTML = originalHTML;
-      btn.className = "w-full bg-brand-brown hover-bg-brand-brown text-white font-medium py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all mt-2";
-      document.getElementById('zk-code-block')!.classList.remove('hidden');
-      terminal.classList.add('hidden');
-    }, 5000);
-  })();
+    addLog(t(`Transaction confirmed in block ${result.blockHeight}.`, `İşlem ${result.blockHeight} numaralı blokta onaylandı.`));
+    const after = await refreshLedger();
+    addLog(t('Public ledger re-read. Done.', 'Public ledger yeniden okundu. Tamamlandı.'));
+
+    const box = el('proof-result');
+    box.className = `border rounded-xl p-4 flex flex-col gap-2 ${result.eligible ? 'border-[#2E7D32]/30 bg-[#F5FBF5]' : 'border-[#C62828]/30 bg-[#FDF5F5]'}`;
+    box.innerHTML = `
+      <p class="font-semibold ${result.eligible ? 'text-[#2E7D32]' : 'text-[#C62828]'}">${
+        result.eligible
+          ? t('Eligible: the network verified your income is below the threshold.', 'Uygun: ağ, gelirinizin eşiğin altında olduğunu doğruladı.')
+          : t('Not eligible: your income is not below the threshold.', 'Uygun değil: geliriniz eşiğin altında değil.')
+      }</p>
+      <p class="text-xs text-dim">Transaction <span class="font-mono break-all">${result.txId}</span> · block ${result.blockHeight}</p>`;
+
+    renderPrivacyCheck(income, result.submittedTx, before, after);
+    addApplicationRow(result.txId, result.eligible, result.blockHeight);
+    el('wallet-dust-display').textContent = formatDust(await session.refreshDustBalance());
+  } catch (error) {
+    console.error('Eligibility check failed', error);
+    addLog(`<span class="text-red-500">${escapeHtml((error as Error).message)}</span>`);
+    alert(`${t('Eligibility check failed: ', 'Uygunluk kontrolü başarısız oldu: ')}${(error as Error).message}`);
+  } finally {
+    btn.innerHTML = originalHTML;
+    btn.removeAttribute('disabled');
+  }
 };
 
-(window as any).simulateDeploy = function() {
-  const btn = document.getElementById('btn-deploy')!;
-  const originalHTML = btn.innerHTML;
-  
-  const textDeploying = currentLang === 'tr' ? "Sözleşme Midnight ağına yükleniyor..." : "Deploying contract to Midnight network...";
-  btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> ${textDeploying}`;
-  
-  setTimeout(() => {
-    const textDeployed = currentLang === 'tr' ? "Dağıtım Başarılı! (Contract Deployed)" : "Deployment Successful! (Contract Deployed)";
-    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> ${textDeployed}`;
-    btn.classList.add('bg-green-600', 'hover:bg-green-700');
-    btn.classList.remove('bg-brand-brown', 'hover-bg-brand-brown');
-    
-    setTimeout(() => {
-      btn.innerHTML = originalHTML;
-      btn.className = "w-full bg-brand-brown hover-bg-brand-brown text-white font-medium py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all mt-2";
-    }, 3000);
-  }, 2000);
-};
 
 // ==========================================
 // CHATBOT LOGIC
@@ -374,7 +348,6 @@ const trDict: Record<string, string> = {
   "Apply for a scholarship privately.": "Gizlilikle burs başvurusu yapın.",
   "I'm a Foundation": "Vakıf Yöneticisiyim",
   "Deploy contracts & verify students.": "Sözleşme yükleyin ve öğrencileri doğrulayın.",
-  "Midnight Scholarship": "Midnight Burs",
   "ZK Privacy Scholarship Platform": "ZK Gizlilik Burs Platformu",
   "Win scholarships without revealing your income.": "Gelirini söylemeden burs kazan.",
   "Prove your scholarship eligibility with zero-knowledge proofs. Your income data never leaks from your browser, not even the foundation sees your actual salary.": "Sıfır bilgi kanıtıyla burs uygunluğunu ispatla. Gelir verisi tarayıcından dışarı sızmaz, vakıf bile gerçek maaşını göremez.",
@@ -389,31 +362,21 @@ const trDict: Record<string, string> = {
   "Foundation Management": "Vakıf Yönetimi",
   "Application List": "Başvuru Listesi",
   "Prove your eligibility without telling anyone your income.": "Gelirini kimseye söylemeden uygunluğunu kanıtla.",
-  "Income is a <span class=\"font-bold\">private witness</span>: kept only in this browser, never sent to the network even when generating a proof. Only the mathematical proof and an anonymous nullifier are transmitted.": "Gelir <span class=\"font-bold\">private witness</span> 'tır: yalnızca bu tarayıcıda tutulur, kanıt üretilirken bile ağa gönderilmez. Ağa yalnızca matematiksel kanıt (proof) ve anonim nullifier iletilir.",
-  "Family Income ($)": "Aile Geliri (TL)",
-  "Fetch Verified Data": "e-Devlet'ten Çek",
+  "Income is a <span class=\"font-bold\">private witness</span>: kept only in this browser, never sent to the network even when generating a proof. Only the proof and the yes/no result reach the network.": "Gelir bir <span class=\"font-bold\">private witness</span>: yalnızca bu tarayıcıda tutulur, kanıt üretilirken bile ağa gönderilmez. Ağa yalnızca kanıt ve evet/hayır sonucu ulaşır.",
+  "Monthly family income (TL)": "Aylık aile geliri (TL)",
   "e.g. 8000": "Örn: 8000",
   "This value never leaves your browser. It is not sent to the server, foundation, or blockchain.": "Bu değer tarayıcınızdan asla çıkmaz. Sunucuya, vakfa veya blokzincire gönderilmez.",
   "Foundation Contract": "Vakıf Sözleşmesi",
-  "Select a foundation contract": "Vakıf sözleşmesi seçin",
-  "Education Foundation 2024 (Threshold: $10,000)": "Eğitim Vakfı 2024 (Eşik: 10.000 TL)",
-  "(Optional) Enter contract address manually — 0x...": "(Opsiyonel) Sözleşme adresini elle girin — 0x...",
   "Apply for Scholarship / Prove Eligibility": "Bursa Başvur / Uygunluğumu Kanıtla",
-  "Foundation Management — Contract Deployment": "Vakıf Yönetimi — Sözleşme Dağıtımı",
-  "Set the scholarship threshold and deploy the contract to the Midnight network.": "Burs eşiğini belirle ve sözleşmeyi Midnight ağına yükle.",
-  "Scholarship Threshold ($) — Maximum Income Limit": "Burs Eşiği (TL) — Maksimum Gelir Sınırı",
-  "This value is the constructor argument of the contract and is written to the blockchain as <span class=\"font-bold\">Public State</span> — it is not secret, students prove they are below this.": "Bu değer sözleşmenin constructor argümanıdır ve <span class=\"font-bold\">Public State</span> olarak blokzincire yazılır — gizli değildir, öğrenciler bunun altında olduklarını kanıtlar.",
-  "Deploy Contract": "Sözleşmeyi Başlat (Deploy)",
-  "RECENT DEPLOYMENTS": "SON DAĞITIMLAR",
-  "threshold $15,000": "eşik 15.000 ₺",
-  "threshold $10,000": "eşik 10.000 ₺",
-  "Proofs sent to the network — verified on Midnight.": "Ağa gönderilen kanıtlar — Midnight üzerinde doğrulanır.",
-  "Since income data never enters the system, this list does <span class=\"font-bold\">NOT</span> contain income information — only the anonymous nullifier, ZK proof status, and application time are visible.": "Gelir verisi sisteme hiç girmediği için bu listede gelir bilgisi yer <span class=\"font-bold\">almaz</span> — yalnızca anonim nullifier, ZK kanıt durumu ve başvuru zamanı görünür.",
+  "Live public state of the deployed eligibility contract.": "Deploy edilmiş uygunluk sözleşmesinin canlı public durumu.",
+  "Contract address (Midnight Preprod)": "Sözleşme adresi (Midnight Preprod)",
+  "Refresh public ledger": "Public ledger'ı yenile",
+  "Eligibility checks submitted from this browser session.": "Bu tarayıcı oturumundan gönderilen uygunluk kontrolleri.",
+  "No checks submitted yet.": "Henüz kontrol gönderilmedi.",
   "Time": "Zaman",
-  "Student (Nullifier)": "Öğrenci (Nullifier)",
-  "Proof Status": "Kanıt Durumu",
-  "Action": "İşlem",
-  "Send Scholarship": "Bursu Gönder",
+  "Transaction": "İşlem",
+  "Result": "Sonuç",
+  "Block": "Blok",
   "Developer (Dev) Mode": "Geliştirici (Dev) Modu",
   "Hide/show background ZK-SNARK codes.": "Arka plandaki ZK-SNARK kodlarını gizle/göster.",
   "ZK Circuit Auditor": "ZK Devre Denetçisi",
@@ -423,7 +386,7 @@ const trDict: Record<string, string> = {
   "To Network": "Ağa gider",
   "only on device": "sadece cihazda",
   "ZK Guide": "ZK Rehberi",
-  "AI Assistant": "Claude destekli asistan",
+  "Quick answers": "Hızlı cevaplar",
   "Ask a question... (your income is never requested)": "Soru sor... (geliriniz asla istenmez)",
   "Hello! You can ask questions about ZK proofs, Midnight Network, and privacy.": "Merhaba! ZK kanıtları, Midnight Network ve gizlilik hakkında soru sorabilirsin.",
   "What is a ZK proof?": "ZK proof nedir?",
@@ -556,3 +519,7 @@ function enableDemoMode() {
     walletConnected.classList.add('flex');
   }
 }
+
+// Show the deployed contract and its live public ledger on load.
+renderContractAddress();
+void refreshLedger();

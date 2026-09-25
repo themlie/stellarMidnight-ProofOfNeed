@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <title>MidScholarship - ZK Burs Sistemi</title>
+  <title>ProofOfNeed</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -123,7 +123,7 @@
   <header class="w-full border-b border-dim px-8 py-6 flex justify-between items-center bg-[#FAFAEE] sticky top-0 z-50">
     <!-- Logo matching the reference -->
     <div class="flex items-center">
-      <h1 class="font-bold text-3xl tracking-tight text-[#1A1A1A]">Mid<span class="text-brand-brown">Scholarship</span></h1>
+      <h1 class="font-bold text-3xl tracking-tight text-[#1A1A1A]">Proof<span class="text-brand-brown">OfNeed</span></h1>
     </div>
 
     <!-- Nav Links (Center/Right-ish) matching the reference -->
@@ -140,11 +140,11 @@
         <button id="lang-tr" onclick="setLang('tr')" class="px-3 py-1.5 rounded-md text-dim hover:text-brand-brown transition-all">TR</button>
       </div>
       <div id="wallet-connected" class="hidden items-center gap-2">
-        <div class="px-4 py-2 bg-white border border-dim rounded-full text-sm font-medium shadow-sm hidden sm:block">
-          172,09 tDUST
+        <div id="wallet-dust-display" class="px-4 py-2 bg-white border border-dim rounded-full text-sm font-medium shadow-sm hidden sm:block">
+          DUST
         </div>
         <div class="px-4 py-2 bg-[#1A1A1A] text-white rounded-full text-sm font-medium flex items-center gap-2 shadow-sm">
-          <span id="wallet-address-display">0x85c4...ccd3</span>
+          <span id="wallet-address-display"></span>
           <button onclick="disconnectWallet()" class="hover:text-gray-300 ml-1">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
@@ -167,7 +167,7 @@
       <div class="max-w-6xl mx-auto px-6 flex flex-col items-center w-full">
       <!-- Hero matching the reference image style -->
       <p class="text-3xl md:text-5xl font-bold text-[#1A1A1A] mt-12 mb-8 tracking-tight leading-tight fade-in-up delay-100 max-w-4xl">
-        MidScholarship is the <span class="text-brand-brown">privacy-first</span> grant platform powered by Midnight.
+        ProofOfNeed is the <span class="text-brand-brown">privacy-first</span> grant platform powered by Midnight.
       </p>
 
         <p class="text-lg md:text-xl text-gray-500 max-w-3xl mb-12 fade-in-up delay-200 leading-relaxed">
@@ -243,35 +243,36 @@
         <div class="bg-[#FBF8F1] border border-[#E8DCC4] p-4 rounded-xl flex items-start gap-3">
           <svg class="text-brand-brown mt-0.5 shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
           <p class="text-sm text-[#5C4532]">
-            Income is a <span class="font-bold">private witness</span>: kept only in this browser, never sent to the network even when generating a proof. Only the mathematical proof and an anonymous nullifier are transmitted.
+            Income is a <span class="font-bold">private witness</span>: kept only in this browser, never sent to the network even when generating a proof. Only the proof and the yes/no result reach the network.
           </p>
         </div>
 
         <div class="flex flex-col gap-2">
           <label class="font-semibold text-sm flex justify-between items-center">
-            <span>Family Income ($) — <span class="text-dim font-normal">Private Witness</span></span>
-            <button onclick="fetchEDevlet()" id="btn-edevlet" class="text-xs bg-[#e5f6fd] text-[#0288D1] px-2 py-1 rounded-md font-medium hover:bg-[#d1effc] transition-colors flex items-center gap-1 border border-[#0288D1]/20">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              Fetch Verified Data
-            </button>
-          </label>
+            <span>Monthly family income (TL) — <span class="text-dim font-normal">Private Witness</span></span>
+            </label>
           <input type="number" id="income-input" placeholder="e.g. 8000" class="w-full px-4 py-3 border border-dim rounded-lg focus:outline-none focus:border-brand-brown focus:ring-1 focus:ring-brand-brown transition-colors">
           <p class="text-xs text-dim mt-1" id="income-helper">This value never leaves your browser. It is not sent to the server, foundation, or blockchain.</p>
         </div>
 
         <div class="flex flex-col gap-2">
           <label class="font-semibold text-sm">Foundation Contract</label>
-          <select class="w-full px-4 py-3 border border-dim rounded-lg bg-white focus:outline-none focus:border-brand-brown appearance-none">
-            <option>Select a foundation contract</option>
-            <option>Education Foundation 2024 (Threshold: $10,000)</option>
-          </select>
-          <input type="text" placeholder="(Optional) Enter contract address manually — 0x..." class="w-full px-4 py-3 border border-dim rounded-lg mt-2 focus:outline-none focus:border-brand-brown">
+          <div class="w-full px-4 py-3 border border-dim rounded-lg bg-[#FBF8F1] flex flex-col gap-1">
+            <span class="font-mono text-xs break-all" id="student-contract-address"></span>
+            <span class="text-xs text-dim">Midnight Preprod · threshold <span class="font-semibold text-[#1A1A1A]" id="student-threshold">…</span></span>
+          </div>
         </div>
 
         <button onclick="generateProof()" id="btn-proof" class="w-full bg-brand-brown hover-bg-brand-brown text-white font-medium py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all mt-2">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
           Apply for Scholarship / Prove Eligibility
         </button>
+
+        <!-- Result of the last on-chain eligibility check -->
+        <div id="proof-result" class="hidden border rounded-xl p-4 flex-col gap-3"></div>
+
+        <!-- What left the browser, and what did not -->
+        <div id="privacy-check" class="hidden border border-dim rounded-xl p-4 flex-col gap-2 bg-[#FAFAEE]"></div>
       </div>
 
       <!-- TAB CONTENT: Foundation Management -->
@@ -281,39 +282,36 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
           </div>
           <div>
-            <h2 class="font-bold text-xl">Foundation Management — Sözleşme Dağıtımı</h2>
-            <p class="text-sm text-dim">Set the scholarship threshold and deploy the contract to the Midnight network.</p>
+            <h2 class="font-bold text-xl">Foundation Management</h2>
+            <p class="text-sm text-dim">Live public state of the deployed eligibility contract.</p>
           </div>
         </div>
 
-        <div class="flex flex-col gap-2">
-          <label class="font-semibold text-sm">Scholarship Threshold ($) — Maximum Income Limit</label>
-          <input type="number" value="10000" class="w-full px-4 py-3 border border-dim rounded-lg focus:outline-none focus:border-brand-brown">
-          <p class="text-xs text-dim mt-1">This value is the constructor argument of the contract and is written to the blockchain as <span class="font-bold">Public State</span> — it is not secret, students prove they are below this.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="border border-dim rounded-xl p-4">
+            <p class="text-xs text-dim uppercase font-semibold tracking-wider">threshold</p>
+            <p class="text-2xl font-bold mt-1" id="ledger-threshold">…</p>
+          </div>
+          <div class="border border-dim rounded-xl p-4">
+            <p class="text-xs text-dim uppercase font-semibold tracking-wider">totalChecks</p>
+            <p class="text-2xl font-bold mt-1" id="ledger-total">…</p>
+          </div>
+          <div class="border border-dim rounded-xl p-4">
+            <p class="text-xs text-dim uppercase font-semibold tracking-wider">eligibleCount</p>
+            <p class="text-2xl font-bold mt-1" id="ledger-eligible">…</p>
+          </div>
         </div>
 
-        <button onclick="simulateDeploy()" id="btn-deploy" class="w-full bg-brand-brown hover-bg-brand-brown text-white font-medium py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all mt-2">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-          Deploy Contract
+        <div class="flex flex-col gap-1">
+          <p class="text-xs text-dim">Contract address (Midnight Preprod)</p>
+          <p class="font-mono text-xs break-all" id="foundation-contract-address"></p>
+          <p class="text-xs text-dim mt-2">This is the entire public ledger of the contract, read live from the Preprod indexer. There is no field for income: the foundation learns how many students passed, never what they earn. The threshold is set once at deploy time (<span class="font-mono">npm run deploy</span>).</p>
+        </div>
+
+        <button onclick="refreshLedger()" id="btn-deploy" class="w-full bg-brand-brown hover-bg-brand-brown text-white font-medium py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all mt-2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+          Refresh public ledger
         </button>
-
-        <div class="mt-6">
-          <h3 class="font-bold text-xs uppercase tracking-wider text-dim mb-4">RECENT DEPLOYMENTS</h3>
-          <div class="flex flex-col border border-dim rounded-xl overflow-hidden">
-            <div class="flex items-center justify-between p-4 border-b border-dim hover:bg-gray-50">
-              <span class="font-mono text-sm text-gray-500">0x38d0b73c616894775cfefde219a35b92acfe88ad</span>
-              <span class="text-sm font-medium">threshold $15,000</span>
-            </div>
-            <div class="flex items-center justify-between p-4 border-b border-dim hover:bg-gray-50">
-              <span class="font-mono text-sm text-gray-500">0xf2efd749afe581e7170187614caaf02ff9c09bca</span>
-              <span class="text-sm font-medium">threshold $15,000</span>
-            </div>
-            <div class="flex items-center justify-between p-4 hover:bg-gray-50">
-              <span class="font-mono text-sm text-gray-500">0x67516ee312d0e7c8521d16cf5ceab949f526cc4a</span>
-              <span class="text-sm font-medium">threshold $10,000</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- TAB CONTENT: Application List -->
@@ -324,14 +322,14 @@
           </div>
           <div>
             <h2 class="font-bold text-xl">Application List</h2>
-            <p class="text-sm text-dim">Proofs sent to the network — verified on Midnight.</p>
+            <p class="text-sm text-dim">Eligibility checks submitted from this browser session.</p>
           </div>
         </div>
 
         <div class="bg-[#FBF8F1] border border-[#E8DCC4] p-4 rounded-xl flex items-start gap-3">
           <svg class="text-brand-brown mt-0.5 shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
           <p class="text-sm text-[#5C4532]">
-            Since income data never enters the system, this list does <span class="font-bold">NOT</span> contain income information — only the anonymous nullifier, ZK proof status, and application time are visible.
+            These rows are exactly what anyone can read on-chain: a transaction and a yes/no result. The income that produced each result is <span class="font-bold">not</span> in the transaction and is not stored anywhere.
           </p>
         </div>
 
@@ -340,42 +338,13 @@
             <thead>
               <tr class="border-b border-dim text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 <th class="pb-3 pl-2">Time</th>
-                <th class="pb-3">Student (Nullifier)</th>
-                <th class="pb-3">Proof Status</th>
-                <th class="pb-3 text-right pr-2">Action</th>
+                <th class="pb-3">Transaction</th>
+                <th class="pb-3">Result</th>
+                <th class="pb-3 text-right pr-2">Block</th>
               </tr>
             </thead>
             <tbody id="applications-table">
-              <tr class="border-b border-dim hover:bg-gray-50">
-                <td class="py-4 pl-2 text-sm text-dim">18.09.2026 18:21</td>
-                <td class="py-4 font-mono text-sm">0x4750911b02544922...24d33931</td>
-                <td class="py-4">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5E9] text-[#2E7D32]">
-                    Verified on Midnight
-                  </span>
-                </td>
-                <td class="py-4 text-right pr-2">
-                  <button class="border border-dim rounded-md px-3 py-1.5 text-xs font-medium hover:bg-gray-50 flex items-center gap-1 ml-auto">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    Send Scholarship
-                  </button>
-                </td>
-              </tr>
-              <tr class="border-b border-dim hover:bg-gray-50">
-                <td class="py-4 pl-2 text-sm text-dim">18.09.2026 18:20</td>
-                <td class="py-4 font-mono text-sm">0xnull001...xnull001</td>
-                <td class="py-4">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#E8F5E9] text-[#2E7D32]">
-                    Verified on Midnight
-                  </span>
-                </td>
-                <td class="py-4 text-right pr-2">
-                  <button class="border border-dim rounded-md px-3 py-1.5 text-xs font-medium hover:bg-gray-50 flex items-center gap-1 ml-auto">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    Send Scholarship
-                  </button>
-                </td>
-              </tr>
+              <tr id="applications-empty"><td colspan="4" class="py-6 text-center text-sm text-dim">No checks submitted yet.</td></tr>
             </tbody>
           </table>
         </div>
@@ -405,11 +374,18 @@
         </div>
         
         <div id="zk-code-block" class="p-4 font-mono text-xs leading-relaxed overflow-x-auto">
-<pre><code><span class="token-comment">// burs_eligibility.compact — Midnight Devresi</span>
-<span class="token-keyword">export ledger</span> threshold: Uint&lt;64&gt;; <span class="token-comment">// Public State</span>
+<pre><code><span class="token-comment">// burs_eligibility.compact</span>
+<span class="token-keyword">export ledger</span> threshold: Uint&lt;64&gt;;      <span class="token-comment">// public</span>
+<span class="token-keyword">export ledger</span> totalChecks: Counter;      <span class="token-comment">// public</span>
+<span class="token-keyword">export ledger</span> eligibleCount: Counter;    <span class="token-comment">// public</span>
 
-<span class="token-keyword">export circuit</span> <span class="token-string">check_eligibility</span>(income: Uint&lt;64&gt;): Boolean {
-  <span class="token-keyword">return</span> income &lt; threshold; <span class="token-comment">// gizli veri (income) cihazdan çıkmaz</span>
+<span class="token-keyword">witness</span> familyIncome(): Uint&lt;64&gt;;       <span class="token-comment">// private, this browser only</span>
+
+<span class="token-keyword">export circuit</span> <span class="token-string">check_eligibility</span>(): Boolean {
+  <span class="token-keyword">const</span> eligible = <span class="token-keyword">disclose</span>(familyIncome() &lt; threshold);
+  totalChecks.increment(1);
+  <span class="token-keyword">if</span> (eligible) { eligibleCount.increment(1); }
+  <span class="token-keyword">return</span> eligible;
 }</code></pre>
         </div>
         
@@ -429,7 +405,7 @@
           </div>
           <div>
             <p class="text-[10px] text-[#4ADE80] font-bold uppercase mb-1">To Network</p>
-            <p class="text-xs text-gray-300">proof + nullifier</p>
+            <p class="text-xs text-gray-300">proof + yes/no</p>
           </div>
         </div>
       </div>
@@ -442,7 +418,7 @@
           </div>
           <div class="flex-1">
             <h3 class="font-bold text-sm">ZK Guide</h3>
-            <p class="text-[11px] text-dim">AI Assistant</p>
+            <p class="text-[11px] text-dim">Quick answers</p>
           </div>
           <div class="w-2 h-2 rounded-full bg-[#34D399]"></div>
         </div>
@@ -492,21 +468,20 @@
         container.classList.add('hidden');
         container.classList.remove('block');
       }
-      }
     }
   </script>
   
   <!-- Footer -->
   <footer class="w-full border-t border-dim px-8 py-8 mt-auto bg-white flex flex-col md:flex-row justify-between items-center z-10 relative">
     <div class="flex items-center gap-2 mb-4 md:mb-0">
-      <h2 class="font-bold text-lg tracking-tight text-[#1A1A1A]">Mid<span class="text-brand-brown">Scholarship</span></h2>
+      <h2 class="font-bold text-lg tracking-tight text-[#1A1A1A]">Proof<span class="text-brand-brown">OfNeed</span></h2>
     </div>
     <div class="flex items-center gap-6 text-sm text-dim font-medium">
       <a href="/how-it-works.html" class="hover:text-[#1A1A1A] transition-colors">How it Works</a>
       <a href="/about.html" class="hover:text-[#1A1A1A] transition-colors">About Us</a>
       <a href="/faq.html" class="hover:text-[#1A1A1A] transition-colors">FAQ</a>
     </div>
-    <p class="text-xs text-gray-400 mt-4 md:mt-0">© 2026 MidScholarship. Powered by Midnight.</p>
+    <p class="text-xs text-gray-400 mt-4 md:mt-0">© 2026 ProofOfNeed. Powered by Midnight.</p>
   </footer>
 
   <script type="module" src="/src/main.ts"></script>
