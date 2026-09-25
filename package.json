@@ -7,7 +7,8 @@
     "compile": "compact compile +0.31.1 burs_eligibility.compact managed/burs_eligibility",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
     "deploy": "cross-env NODE_OPTIONS=--max-old-space-size=8192 tsx scripts/deploy.ts",
-    "verify": "tsx scripts/verify.ts"
+    "verify": "tsx scripts/verify.ts",
+    "redirect-dust": "cross-env NODE_OPTIONS=--max-old-space-size=8192 tsx scripts/redirect-dust.ts"
   },
   "keywords": [],
   "author": "",
