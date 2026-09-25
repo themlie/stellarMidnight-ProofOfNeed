@@ -166,8 +166,9 @@ const submitRecipe = async (wallet: WalletFacade, recipe: Parameters<WalletFacad
   submitWithRetry(wallet, await wallet.finalizeRecipe(recipe));
 
 /**
- * Registers every unregistered tNIGHT UTXO for DUST generation. DUST goes to
- * this wallet unless `receiver` names another wallet's DUST address.
+ * Registers the wallet's tNIGHT for DUST generation. Registration is per NIGHT
+ * key: once registered, tNIGHT later sent to the same key generates DUST too,
+ * and the current node rejects re-pointing it (BalanceCheckOverspend, 138).
  */
 export const registerForDust = async (ctx: PreprodWallet, receiver?: DustAddress) => {
   const state = await waitFor(ctx.wallet, () => true);
