@@ -1,0 +1,8 @@
+{
+  "network": "preprod",
+  "contractAddress": "6a7ef6a4713cbe57e0fe511458bf5f2bfe8fa043546e41771b91987f6b42a7ac",
+  "txId": "9039db5bb9e73cd5e6bd6fab4f268dd50c52c94102547e1879f07eec162188b4",
+  "blockHeight": 2705042,
+  "initialThreshold": "10000",
+  "deployedAt": "2026-09-25T14:52:06.000Z"
+}

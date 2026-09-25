@@ -110,7 +110,18 @@ PROOF_SERVER_URL=http://127.0.0.1:6300 npm run deploy
 
 ## Deployment
 
-- Network: Midnight Preprod
-- Contract address: `<ADDED_AFTER_DEPLOY>`
+| | |
+|---|---|
+| Network | Midnight Preprod |
+| Contract address | `6a7ef6a4713cbe57e0fe511458bf5f2bfe8fa043546e41771b91987f6b42a7ac` |
+| Deploy transaction | `9039db5bb9e73cd5e6bd6fab4f268dd50c52c94102547e1879f07eec162188b4` |
+| Block | 2705042 |
+| Initial threshold | 10000 |
+
+The same data is in [deployment-preprod.json](deployment-preprod.json). To read the contract back from the Preprod indexer and decode its public ledger state:
+
+```bash
+npm run verify
+```
 
 ![Deploy output](docs/deploy.png)
