@@ -137,9 +137,33 @@ export const waitFor = (wallet: WalletFacade, predicate: (s: FacadeState) => boo
 export const nightBalance = (s: FacadeState) => s.unshielded.balances[ledger.nativeToken().raw] ?? 0n;
 export const dustBalance = (s: FacadeState) => s.dust.balance(new Date());
 
+const isDroppedConnection = (err: unknown) => /disconnected from|Normal Closure|WebSocket/i.test(String(err) + String((err as { cause?: unknown })?.cause ?? ''));
+
+/**
+ * Submits a finalized transaction, retrying when the node connection drops.
+ * The wallet SDK shares one node connection and closes it whenever any
+ * submission stream ends, which can cut off a submission that is still being
+ * watched ("disconnected ... Normal Closure").
+ */
+export const submitWithRetry = async (
+  wallet: WalletFacade,
+  tx: Parameters<WalletFacade['submitTransaction']>[0],
+  attempts = 5,
+): Promise<string> => {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await wallet.submitTransaction(tx);
+    } catch (err) {
+      if (attempt >= attempts || !isDroppedConnection(err)) throw err;
+      console.log(`   ↻ Node bağlantısı koptu, işlem yeniden gönderiliyor (${attempt + 1}/${attempts})...`);
+      await new Promise((r) => setTimeout(r, 3000 * attempt));
+    }
+  }
+};
+
 /** Submits a DUST (de)registration recipe and returns the transaction id. */
 const submitRecipe = async (wallet: WalletFacade, recipe: Parameters<WalletFacade['finalizeRecipe']>[0]) =>
-  wallet.submitTransaction(await wallet.finalizeRecipe(recipe));
+  submitWithRetry(wallet, await wallet.finalizeRecipe(recipe));
 
 /**
  * Registers every unregistered tNIGHT UTXO for DUST generation. DUST goes to
@@ -154,19 +178,6 @@ export const registerForDust = async (ctx: PreprodWallet, receiver?: DustAddress
     ctx.keystore.getPublicKey(),
     (payload) => ctx.keystore.signData(payload),
     receiver,
-  );
-  return submitRecipe(ctx.wallet, recipe);
-};
-
-/** Stops every registered tNIGHT UTXO from generating DUST. */
-export const deregisterFromDust = async (ctx: PreprodWallet) => {
-  const state = await waitFor(ctx.wallet, () => true);
-  const registered = state.unshielded.availableCoins.filter((c) => c.meta.registeredForDustGeneration);
-  if (registered.length === 0) return undefined;
-  const recipe = await ctx.wallet.deregisterFromDustGeneration(
-    [...registered],
-    ctx.keystore.getPublicKey(),
-    (payload) => ctx.keystore.signData(payload),
   );
   return submitRecipe(ctx.wallet, recipe);
 };

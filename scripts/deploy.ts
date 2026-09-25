@@ -39,6 +39,7 @@ import {
   nightBalance,
   openPreprodWallet,
   registerForDust,
+  submitWithRetry,
   waitFor,
   type PreprodWallet,
 } from './wallet.js';
@@ -91,7 +92,7 @@ async function main() {
       const signed = await wallet.signRecipe(recipe, (payload) => keystore.signData(payload));
       return wallet.finalizeRecipe(signed);
     },
-    submitTx: (tx) => wallet.submitTransaction(tx),
+    submitTx: (tx) => submitWithRetry(wallet, tx),
   };
 
   const proofProvider: ProofProvider = CONFIG.proofServerUrl
