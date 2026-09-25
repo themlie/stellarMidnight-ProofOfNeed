@@ -1,25 +1,27 @@
-# ProofOfNeed: İhtiyacını kanıtla, gelirini söyleme
+# ProofOfNeed: Prove your need, not your income
 
-ProofOfNeed, Midnight üzerinde çalışan bir burs uygunluk sözleşmesi. Öğrenci, ailesinin gelirinin vakfın belirlediği eşiğin altında olduğunu sıfır bilgi kanıtıyla ispatlıyor. Gelirin kendisi ne zincire yazılıyor ne de öğrencinin cihazından çıkıyor.
+*İhtiyacını kanıtla, gelirini söyleme.*
 
-## Ürün fikri
+ProofOfNeed is a scholarship eligibility contract on Midnight. A student proves with a zero-knowledge proof that their family income is below the threshold set by a foundation. The income itself is never written to the chain and never leaves the student's device.
 
-Bugün burs başvurusu yapan bir öğrenci, ailesinin gelirini, mesleğini ve iş yerini bir memura ya da vakıf görevlisine açmak zorunda. Bu hem gereğinden fazla kişisel verinin toplanması demek hem de birçok aile için utanç verici bir süreç. Vakfın aslında bilmesi gereken tek şey "bu öğrenci eşiğin altında mı?" sorusunun cevabı. ProofOfNeed'de vakıf eşiği zincire yazıyor, öğrenci gelirini sadece kendi cihazında kullanarak bir kanıt üretiyor ve ağ bu kanıtı doğruluyor. Vakıf evet/hayır cevabını görüyor, rakamı hiçbir zaman görmüyor. İlerleyen aşamalarda uygun bulunan öğrencilere bağışçı fonlarından aylık ödeme yapılması planlanıyor.
+## Product idea
 
-## Public state ve private witness
+Applying for a scholarship today means handing your family's income, occupations and employers to a clerk or a foundation officer. That is far more personal data than the decision needs, and for many families the process is humiliating. All the foundation actually needs to know is whether the student is below the threshold. In ProofOfNeed the foundation publishes the threshold on-chain, the student generates a proof using their income only on their own device, and the network verifies that proof. The foundation sees a yes or no answer and never sees the number. Later stages will pay eligible students a monthly stipend from donor funds.
 
-Compact'ta circuit girdileri varsayılan olarak gizli. `disclose()` bir değeri kendi başına public yapmaz. Derleyiciye "bu değerin açığa çıkmasını bilerek kabul ediyorum" demenin yolu budur. Bir değer ancak public bir alana geçtiğinde görünür hale gelir: ledger'a yazıldığında, export edilmiş bir circuit'ten döndürüldüğünde ya da başka bir sözleşmeye gönderildiğinde.
+## Public state vs private witness
 
-Sözleşme ([burs_eligibility.compact](burs_eligibility.compact)) bu ayrımı şöyle kullanıyor:
+In Compact, circuit inputs are private by default. `disclose()` does not make a value public by itself. It is how you tell the compiler you knowingly accept that the value may be exposed. A value only becomes visible when it crosses into a public domain: when it is written to the ledger, returned from an exported circuit, or passed to another contract.
 
-| | Ne | Nerede | Kim görebilir |
+The contract ([burs_eligibility.compact](burs_eligibility.compact)) draws the line like this:
+
+| | What | Where | Who can see it |
 |---|---|---|---|
-| Public ledger | `threshold` | Zincir | Herkes. Vakfın kuralı zaten şeffaf olmalı. |
-| Public ledger | `totalChecks`, `eligibleCount` | Zincir | Herkes. Kaç kontrol yapıldığı ve kaçının olumlu sonuçlandığı. |
-| Circuit sonucu | `check_eligibility()` dönüşü (Boolean) | İşlem transcript'i | Herkes. Sadece uygun/uygun değil bilgisi. |
-| Private witness | `familyIncome()` | Öğrencinin cihazı | Sadece öğrenci. |
+| Public ledger | `threshold` | Chain | Everyone. The foundation's rule should be transparent anyway. |
+| Public ledger | `totalChecks`, `eligibleCount` | Chain | Everyone. How many checks ran and how many passed. |
+| Circuit result | `check_eligibility()` return value (Boolean) | Transaction transcript | Everyone. Only eligible or not eligible. |
+| Private witness | `familyIncome()` | Student's device | Only the student. |
 
-`familyIncome()` bir `witness`. Değerini öğrencinin yerel DApp'i sağlıyor ([src/witnesses.ts](src/witnesses.ts)) ve bu değer ZK kanıtının içinde kullanılıyor. Circuit'te `disclose()` sadece karşılaştırmanın sonucuna uygulanıyor:
+`familyIncome()` is a `witness`. The student's local DApp supplies its value ([src/witnesses.ts](src/witnesses.ts)), and that value is only used inside the ZK proof. In the circuit, `disclose()` is applied to the result of the comparison and nothing else:
 
 ```compact
 export circuit check_eligibility(): Boolean {
@@ -28,36 +30,36 @@ export circuit check_eligibility(): Boolean {
 }
 ```
 
-Gelirin kendisini ledger'a yazmaya ya da döndürmeye çalışırsanız derleyici `disclose()` olmadan buna izin vermez. Bu da gelirin kazara açığa çıkmasını derleme aşamasında engelliyor.
+If you try to write the income itself to the ledger or return it, the compiler rejects the program unless you wrap it in `disclose()`. That catches an accidental income leak at compile time.
 
-Zinciri izleyen biri eşiği, kaç kontrol yapıldığını ve her kontrolün sonucunu görebilir. Gelir rakamını, meslek ya da aile bilgilerini göremez.
+Someone watching the chain can see the threshold, how many checks were made and the result of each check. They cannot see the income figure, occupations or any family details.
 
-## Proje yapısı
+## Project structure
 
 ```
-burs_eligibility.compact   Compact sözleşmesi
-managed/burs_eligibility/  Derleme çıktısı (circuit, prover/verifier anahtarları, zkir, TS bağlamaları)
-src/witnesses.ts           Private state tipi ve familyIncome witness'ının implementasyonu
-tests/                     Sözleşmeyi yerelde çalıştıran simülatör ve testler
-scripts/deploy.ts          Preprod'a deploy script'i
-frontend/                  Web arayüzü (Level 2 kapsamında)
+burs_eligibility.compact   Compact contract
+managed/burs_eligibility/  Compiler output (circuit, prover/verifier keys, zkir, TS bindings)
+src/witnesses.ts           Private state type and the familyIncome witness implementation
+tests/                     Local simulator and tests that run the compiled contract
+scripts/deploy.ts          Preprod deploy script
+frontend/                  Web UI (Level 2 scope)
 ```
 
-## Kurulum
+## Setup
 
-Gerekenler:
+Requirements:
 
-- Node.js 22 veya üstü
-- Compact araç zinciri ve compiler 0.31.1. Windows'ta WSL (Ubuntu) içinde kurulmalı.
+- Node.js 22 or later
+- The Compact toolchain with compiler 0.31.1. On Windows, install it inside WSL (Ubuntu).
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
 compact update 0.31.1
 ```
 
-Compiler sürümü önemli. Stabil Midnight SDK'sı (midnight-js 4.x) compact-runtime 0.16 kullanıyor. Bu runtime'ı 0.31.1 üretiyor, daha yeni compiler'lar farklı bir runtime'a göre kod üretiyor.
+The compiler version matters. The stable Midnight SDK (midnight-js 4.x) uses compact-runtime 0.16, which is what 0.31.1 targets. Newer compilers generate code for a different runtime.
 
-Repoyu klonlayıp bağımlılıkları kurun:
+Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/themlie/stellarMidnight-ProofOfNeed.git
@@ -65,50 +67,50 @@ cd stellarMidnight-ProofOfNeed
 npm install
 ```
 
-### Derleme
+### Compile
 
 ```bash
 npm run compile
 ```
 
-Bu komut `compact compile +0.31.1 burs_eligibility.compact managed/burs_eligibility` çalıştırıyor ve `managed/` dizinini yeniden oluşturuyor.
+This runs `compact compile +0.31.1 burs_eligibility.compact managed/burs_eligibility` and regenerates the `managed/` directory.
 
-![Derleme çıktısı](docs/compile.png)
+![Compile output](docs/compile.png)
 
-### Testler
+### Tests
 
 ```bash
 npm test
 ```
 
-Testler derlenmiş sözleşmeyi `compact-runtime` üzerinde gerçekten çalıştırıyor ve geliri private witness olarak veriyor. Kontrol edilen durumlar: eşiğin altında, üstünde ve eşitinde gelir, sıfır gelir, deploy sonrası ledger durumu ve ledger'da gelire dair hiçbir alanın bulunmaması.
+The tests execute the compiled contract on `compact-runtime` and pass the income in as a private witness. They cover income below, above and equal to the threshold, zero income, the ledger state after deploy, and check that no income-related field exists on the ledger.
 
-### Preprod'a deploy
+### Deploy to Preprod
 
-1. Deploy script'ini çalıştırın:
+1. Run the deploy script:
 
    ```bash
    npm run deploy
    ```
 
-   İlk çalıştırmada script yeni bir cüzdan oluşturuyor ve seed'ini `.env` dosyasına yazıyor. `.env` git'e dahil değil. Seed'i ayrıca güvenli bir yerde saklayın.
+   On the first run the script creates a new wallet and writes its seed to `.env`. `.env` is excluded from git. Back the seed up somewhere safe as well.
 
-   İlk senkronizasyon Preprod geçmişinin tamamını taradığı için uzun sürüyor. Script ilerlemeyi dakikada bir `.wallet-cache/` klasörüne kaydediyor, bir sonraki çalıştırma kaldığı yerden devam ediyor.
+   The first sync replays the whole Preprod history, so it takes a long time. The script saves its progress to `.wallet-cache/` every minute, and the next run picks up where it left off.
 
-2. Script cüzdanın unshielded adresini yazdırıyor. Bu adrese [Preprod faucet](https://faucet.preprod.midnight.network) üzerinden tNIGHT gönderin.
+2. The script prints the wallet's unshielded address. Send tNIGHT to it from the [Preprod faucet](https://faucet.preprod.midnight.network).
 
-3. Script tNIGHT'ı görünce onu DUST üretimine kaydediyor. İşlem ücretleri DUST ile ödeniyor ve DUST, tuttuğunuz NIGHT'tan zamanla üretiliyor. Bu yüzden DUST'ı başka bir yerden transfer etmeniz ya da takaslamanız gerekmiyor. Bakiye oluşunca sözleşme `threshold = 10000` ile deploy ediliyor ve adres `deployment-preprod.json` dosyasına yazılıyor.
+3. Once the tNIGHT arrives, the script registers it for DUST generation. Transaction fees are paid in DUST, and DUST is generated over time from the NIGHT you hold, so you never need to transfer or swap for DUST. When a DUST balance appears, the contract is deployed with `threshold = 10000` and the address is written to `deployment-preprod.json`.
 
-ZK proof'lar Node içinde WASM ile üretiliyor, yani Docker gerekmiyor. Bu contract'ın anahtarları `managed/` klasöründen okunuyor, cüzdanın kendi zswap/dust anahtarları ise ilk kullanımda indiriliyor. Yerel bir proof server kullanmak isterseniz:
+ZK proofs are generated in-process with WASM, so Docker is not required. This contract's keys are read from `managed/`, and the wallet's built-in zswap/dust keys are downloaded on first use. To use a local proof server instead:
 
 ```bash
 docker run -d -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
 PROOF_SERVER_URL=http://127.0.0.1:6300 npm run deploy
 ```
 
-## Deploy bilgileri
+## Deployment
 
-- Ağ: Midnight Preprod
-- Contract address: `<DEPLOY_SONRASI_EKLENECEK>`
+- Network: Midnight Preprod
+- Contract address: `<ADDED_AFTER_DEPLOY>`
 
-![Deploy çıktısı](docs/deploy.png)
+![Deploy output](docs/deploy.png)
