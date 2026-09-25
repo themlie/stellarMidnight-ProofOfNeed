@@ -298,7 +298,8 @@ async function main() {
     privateStateProvider: levelPrivateStateProvider<'burs-eligibility', BursPrivateState>({
       privateStateStoreName: 'burs-eligibility-state',
       accountId: unshieldedKeystore.getBech32Address().asString(),
-      privateStoragePasswordProvider: () => createHash('sha256').update(`burs:${seed}`).digest('hex'),
+      // The provider requires 3+ character classes; a bare hex digest only has two.
+      privateStoragePasswordProvider: () => `Burs-${createHash('sha256').update(`burs:${seed}`).digest('hex')}`,
     }),
     publicDataProvider: indexerPublicDataProvider(CONFIG.indexerHttpUrl, CONFIG.indexerWsUrl),
     zkConfigProvider,
