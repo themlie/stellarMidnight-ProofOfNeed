@@ -1,5 +1,5 @@
 import './polyfills';
-import { CONTRACT_ADDRESS, findIncomeInTx, findWallet, preprodPublicData, ProofOfNeedSession, readPublicLedger } from './midnight';
+import { CONTRACT_ADDRESS, describeError, findIncomeInTx, findWallet, preprodPublicData, ProofOfNeedSession, readPublicLedger } from './midnight';
 import type { Ledger } from '../../managed/burs_eligibility/contract/index.js';
 
 (window as any).openRoleModal = function() {
@@ -101,6 +101,12 @@ const refreshLedger = async (): Promise<Ledger | null> => {
     el('wallet-address-display').textContent = shorten(session.info.unshieldedAddress, 12, 6);
     el('wallet-address-display').title = session.info.unshieldedAddress;
     el('wallet-dust-display').textContent = formatDust(session.info.dustBalance);
+    el('wallet-dust-display').title = `${t('Prover used by Lace', "Lace'in kullandığı prover")}: ${session.info.proverServerUri ?? t('not reported', 'bildirilmedi')}`;
+    console.info('[ProofOfNeed] Lace configuration', {
+      wallet: `${session.info.name} (DApp connector ${session.info.apiVersion})`,
+      proverServerUri: session.info.proverServerUri,
+      dust: session.info.dustBalance.toString(),
+    });
 
     enableDemoMode();
     await refreshLedger();
@@ -249,8 +255,17 @@ const renderPrivacyCheck = (income: bigint, submittedTx: Uint8Array, before: Led
     el('wallet-dust-display').textContent = formatDust(await session.refreshDustBalance());
   } catch (error) {
     console.error('Eligibility check failed', error);
-    addLog(`<span class="text-red-500">${escapeHtml((error as Error).message)}</span>`);
-    alert(`${t('Eligibility check failed: ', 'Uygunluk kontrolü başarısız oldu: ')}${(error as Error).message}`);
+    const detail = describeError(error);
+    addLog(`<span class="text-red-500">${escapeHtml(detail)}</span>`);
+    const noDust = /InsufficientFunds/.test(detail) && /dust/i.test(detail);
+    alert(
+      noDust
+        ? t(
+            'Your Lace wallet has no DUST to pay the transaction fee. In Lace, designate your tNIGHT for DUST generation, wait a few minutes and try again.',
+            "Lace cüzdanınızda işlem ücreti için DUST yok. Lace'te tNIGHT'ınızı DUST üretimine atayın, birkaç dakika bekleyip tekrar deneyin.",
+          )
+        : `${t('Eligibility check failed: ', 'Uygunluk kontrolü başarısız oldu: ')}${detail}`,
+    );
   } finally {
     btn.innerHTML = originalHTML;
     btn.removeAttribute('disabled');

@@ -21,6 +21,7 @@ import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   MidnightProvider,
   PrivateStateId,
+  ProofProvider,
   PrivateStateProvider,
   PublicDataProvider,
   UnboundTransaction,
@@ -84,6 +85,47 @@ export const findIncomeInTx = (tx: Uint8Array, income: bigint): boolean => {
 const toHex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 const fromHex = (hex: string) => Uint8Array.from(hex.match(/../g) ?? [], (h) => parseInt(h, 16));
 
+// ─── Error reporting ──────────────────────────────────────────────────────────
+// Lace rejects with plain objects ({ code, reason }) or message-less Errors, which
+// midnight-js wraps as "...: Error". Flatten the whole cause chain into text.
+
+export const describeError = (err: unknown): string => {
+  const parts: string[] = [];
+  let current: unknown = err;
+  for (let depth = 0; current != null && depth < 6; depth++) {
+    if (typeof current === 'object') {
+      const e = current as { name?: string; message?: string; code?: unknown; reason?: unknown; cause?: unknown };
+      const fields = [e.name, e.message, e.code != null ? `code=${String(e.code)}` : '', e.reason != null ? `reason=${String(e.reason)}` : '']
+        .filter((x) => x && x !== 'Error')
+        .join(' ');
+      let extra = '';
+      if (!fields) {
+        try {
+          extra = JSON.stringify(current);
+        } catch {
+          extra = String(current);
+        }
+      }
+      parts.push(fields || extra);
+      current = e.cause;
+    } else {
+      parts.push(String(current));
+      current = undefined;
+    }
+  }
+  return parts.filter(Boolean).join(' ← ');
+};
+
+/** Labels a failing Lace call with the step it belongs to. */
+const laceStep = async <T>(step: string, call: () => Promise<T>): Promise<T> => {
+  try {
+    return await call();
+  } catch (err) {
+    console.error(`[ProofOfNeed] ${step} failed`, err);
+    throw new Error(`${step} failed: ${describeError(err)}`, { cause: err });
+  }
+};
+
 // ─── In-memory private state ──────────────────────────────────────────────────
 // The student's income only ever lives in this Map for the lifetime of the tab.
 // Nothing is persisted to IndexedDB or localStorage.
@@ -122,6 +164,19 @@ declare global {
 export const findWallet = (): InitialAPI | undefined =>
   Object.values(window.midnight ?? {}).find((w) => typeof w?.connect === 'function' && w.apiVersion?.startsWith('4.'));
 
+
+/** Proof provider backed by Lace's prover, with the proving step labelled in errors. */
+const laceProofProvider = async (
+  api: ConnectedAPI,
+  zkConfigProvider: FetchZkConfigProvider<'check_eligibility'>,
+): Promise<ProofProvider> => {
+  const inner = await laceStep('Lace getProvingProvider', () =>
+    dappConnectorProofProvider(api, zkConfigProvider, CostModel.initialCostModel()),
+  );
+  return {
+    proveTx: (tx, config) => laceStep("ZK proof via Lace's prover", () => inner.proveTx(tx, config)),
+  };
+};
 
 export class ProofOfNeedSession {
   private contract?: FoundContract<BursContract>;
@@ -166,12 +221,14 @@ export class ProofOfNeedSession {
       getCoinPublicKey: () => coinPublicKey,
       getEncryptionPublicKey: () => encryptionPublicKey,
       balanceTx: async (tx: UnboundTransaction): Promise<FinalizedTransaction> => {
-        const { tx: balanced } = await api.balanceUnsealedTransaction(toHex(tx.serialize()));
+        const { tx: balanced } = await laceStep('Lace balanceUnsealedTransaction (adding DUST fees)', () =>
+          api.balanceUnsealedTransaction(toHex(tx.serialize())),
+        );
         return Transaction.deserialize<SignatureEnabled, Proof, Binding>('signature', 'proof', 'binding', fromHex(balanced));
       },
       submitTx: async (tx: FinalizedTransaction): Promise<TransactionId> => {
         submitted.bytes = tx.serialize();
-        await api.submitTransaction(toHex(submitted.bytes));
+        await laceStep('Lace submitTransaction', () => api.submitTransaction(toHex(submitted.bytes)));
         return tx.identifiers()[0];
       },
     };
@@ -188,7 +245,7 @@ export class ProofOfNeedSession {
       publicDataProvider: publicData,
       zkConfigProvider,
       // Proofs are produced by the prover Lace is configured with.
-      proofProvider: await dappConnectorProofProvider(api, zkConfigProvider, CostModel.initialCostModel()),
+      proofProvider: await laceProofProvider(api, zkConfigProvider),
       walletProvider,
       midnightProvider: walletProvider,
     };
