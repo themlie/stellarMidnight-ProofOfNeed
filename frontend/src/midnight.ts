@@ -48,6 +48,7 @@ export type WalletInfo = {
   apiVersion: string;
   unshieldedAddress: string;
   shieldedAddress: string;
+  dustAddress: string;
   dustBalance: bigint;
   /** Where Lace sends proving requests (the witness data goes here, not to the network). */
   proverServerUri?: string;
@@ -200,9 +201,10 @@ export class ProofOfNeedSession {
     }
     setNetworkId(NETWORK_ID);
 
-    const [shielded, { unshieldedAddress }, dust] = await Promise.all([
+    const [shielded, { unshieldedAddress }, { dustAddress }, dust] = await Promise.all([
       api.getShieldedAddresses(),
       api.getUnshieldedAddress(),
+      api.getDustAddress(),
       api.getDustBalance(),
     ]);
 
@@ -255,6 +257,7 @@ export class ProofOfNeedSession {
       apiVersion: wallet.apiVersion,
       unshieldedAddress,
       shieldedAddress: shielded.shieldedAddress,
+      dustAddress,
       dustBalance: dust.balance,
       proverServerUri: config.proverServerUri,
     };
