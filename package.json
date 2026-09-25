@@ -44,7 +44,8 @@
   },
   "overrides": {
     "@midnight-ntwrk/ledger-v8": "8.1.2",
-    "@midnight-ntwrk/wallet-sdk-dust-wallet": "4.2.0"
+    "@midnight-ntwrk/wallet-sdk-dust-wallet": "4.2.0",
+    "@midnight-ntwrk/onchain-runtime-v3": "3.1.1"
   },
   "repository": {
     "type": "git",
