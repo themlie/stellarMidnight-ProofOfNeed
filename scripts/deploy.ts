@@ -123,7 +123,7 @@ async function main() {
     compiledContract,
     privateStateId: 'burs-eligibility',
     // The deployer never proves eligibility, so its local income is irrelevant.
-    initialPrivateState: createBursPrivateState(0n),
+    initialPrivateState: createBursPrivateState(0n, new Uint8Array(32)),
     args: [INITIAL_THRESHOLD],
   });
 

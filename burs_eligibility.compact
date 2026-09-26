@@ -14,18 +14,37 @@ export ledger totalChecks: Counter;
 // Number of checks that proved income was below the threshold.
 export ledger eligibleCount: Counter;
 
-// ─── Private witness ──────────────────────────────────────────────────────────
-// Supplied by the student's local DApp. The value is used inside the ZK proof
-// and never leaves the student's machine.
+// Nullifiers of every application so far. A nullifier is a hash of the
+// student's secret, so it shows that a secret was used without revealing
+// who holds it or which wallet paid for the transaction.
+export ledger applications: Set<Bytes<32>>;
+
+// ─── Private witnesses ────────────────────────────────────────────────────────
+// Supplied by the student's local DApp. Both values are used inside the ZK
+// proof and never leave the student's machine.
 witness familyIncome(): Uint<64>;
+witness studentSecret(): Bytes<32>;
 
 constructor(initial_threshold: Uint<64>) {
     threshold = disclose(initial_threshold);
 }
 
-// Proves `familyIncome() < threshold` without revealing the income.
-// Only the boolean result is disclosed and recorded on the public ledger.
+// Derives the application nullifier from the student's secret. Pure, so the DApp
+// can compute it locally without a proof. The domain tag keeps it distinct from
+// any other hash of the same secret.
+export pure circuit applicationNullifier(secret: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>([pad(32, "proofofneed:application:"), secret]);
+}
+
+// Proves `familyIncome() < threshold` without revealing the income, and allows
+// one application per student secret. The nullifier is spent whether or not
+// the student is eligible, so a rejected student cannot retry with a lower
+// income. Only the nullifier and the boolean result are disclosed.
 export circuit check_eligibility(): Boolean {
+    const nullifier = disclose(applicationNullifier(studentSecret()));
+    assert(!applications.member(nullifier), "Already applied");
+    applications.insert(nullifier);
+
     const eligible = disclose(familyIncome() < threshold);
 
     totalChecks.increment(1);

@@ -4,6 +4,24 @@
   "runtime-version": "0.16.0",
   "circuits": [
     {
+      "name": "applicationNullifier",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "secret",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
       "name": "check_eligibility",
       "pure": false,
       "proof": true,
@@ -22,6 +40,15 @@
       "result type": {
         "type-name": "Uint",
         "maxval": 18446744073709551615
+      }
+    },
+    {
+      "name": "studentSecret",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Bytes",
+        "length": 32
       }
     }
   ],
@@ -49,6 +76,16 @@
       "index": 2,
       "exported": true,
       "storage": "Counter"
+    },
+    {
+      "name": "applications",
+      "index": 3,
+      "exported": true,
+      "storage": "Set",
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
     }
   ]
 }

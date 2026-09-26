@@ -43,7 +43,7 @@ if (!action) {
 }
 
 const state = ContractState.deserialize(Buffer.from(action.state, 'hex'));
-const { threshold, totalChecks, eligibleCount } = ledger(state.data);
+const { threshold, totalChecks, eligibleCount, applications } = ledger(state.data);
 
 console.log('🌑 ProofOfNeed — on-chain verification (Midnight Preprod)\n');
 console.log(`📍 Contract address : ${address}`);
@@ -54,4 +54,5 @@ console.log('\n📖 Public ledger state');
 console.log(`   threshold      = ${threshold}`);
 console.log(`   totalChecks    = ${totalChecks}`);
 console.log(`   eligibleCount  = ${eligibleCount}`);
-console.log('\n🔒 Family income is a private witness and is not part of the ledger.');
+console.log(`   applications   = ${applications.size()} nullifier(s)`);
+console.log('\n🔒 Family income and the student secret are private witnesses and are not part of the ledger.');
