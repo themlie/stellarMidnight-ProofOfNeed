@@ -1,6 +1,8 @@
 export default {
   preset: "ts-jest/presets/default-esm",
   testEnvironment: "node",
+  // Contract tests only; frontend/ has its own Vitest suite.
+  roots: ["<rootDir>/tests"],
   extensionsToTreatAsEsm: [".ts"],
   transform: {
     "^.+\\.tsx?$": [
