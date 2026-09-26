@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import wasm from 'vite-plugin-wasm';
@@ -31,6 +32,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     esbuildOptions: { target: 'esnext' },
+  },
+  test: {
+    include: ['src/**/*.test.ts'],
+    environment: 'node',
   },
   server: {
     port: 4000,

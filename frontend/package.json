@@ -7,12 +7,14 @@
     "sync-keys": "node scripts/sync-keys.mjs",
     "dev": "npm run sync-keys && vite --port 4000",
     "build": "npm run sync-keys && tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
     "vite": "^6.3.5",
-    "vite-plugin-wasm": "^3.4.1"
+    "vite-plugin-wasm": "^3.4.1",
+    "vitest": "^3.2.7"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-js": "2.5.1",
