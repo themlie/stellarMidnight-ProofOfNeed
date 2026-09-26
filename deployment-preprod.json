@@ -1,8 +1,9 @@
 {
   "network": "preprod",
-  "contractAddress": "6a7ef6a4713cbe57e0fe511458bf5f2bfe8fa043546e41771b91987f6b42a7ac",
-  "txId": "9039db5bb9e73cd5e6bd6fab4f268dd50c52c94102547e1879f07eec162188b4",
-  "blockHeight": 2705042,
+  "contractAddress": "6ec4f7700d5ae009284841ceab24340e6601fec42b0f12a9bbb48f9ae85e3d44",
+  "txHash": "3a44f31e7f5e5c4d02194fec1e113546540ec1ccf667b2044cd4c7c7d8fdc25b",
+  "txId": "002e1163a412c74718f38426132dd9f6198ccbd827e1b15f75f79986868f214527",
+  "blockHeight": 2720552,
   "initialThreshold": "10000",
-  "deployedAt": "2026-09-25T14:52:06.000Z"
+  "deployedAt": "2026-09-26T16:43:23.443Z"
 }

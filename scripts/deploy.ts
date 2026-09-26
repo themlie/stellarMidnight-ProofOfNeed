@@ -127,12 +127,12 @@ async function main() {
     args: [INITIAL_THRESHOLD],
   });
 
-  const { contractAddress, txId, blockHeight } = deployed.deployTxData.public;
+  const { contractAddress, txHash, txId, blockHeight } = deployed.deployTxData.public;
 
   console.log('\n🎉 DEPLOY BAŞARILI');
   console.log('═══════════════════════════════════════════════════════════════');
   console.log(`📍 Contract address : ${contractAddress}`);
-  console.log(`🧾 Transaction ID   : ${txId}`);
+  console.log(`🧾 Transaction hash : ${txHash}`);
   console.log(`📦 Block height     : ${blockHeight}`);
   console.log(`🌐 Network          : ${CONFIG.networkId}`);
   console.log('═══════════════════════════════════════════════════════════════\n');
@@ -140,6 +140,7 @@ async function main() {
   const deploymentInfo = {
     network: CONFIG.networkId,
     contractAddress,
+    txHash,
     txId,
     blockHeight,
     initialThreshold: INITIAL_THRESHOLD.toString(),
