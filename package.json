@@ -50,5 +50,8 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/themlie/stellarMidnight-ProofOfNeed.git"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
