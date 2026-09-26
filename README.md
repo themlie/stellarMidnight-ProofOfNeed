@@ -116,13 +116,19 @@ npm test
 
 The 10 tests execute the compiled contract on `compact-runtime` with the income and the student secret passed in as private witnesses. They cover income below, above and equal to the threshold, zero income, a second application with the same secret, a rejected student retrying with a lower income, several different students, and check that the ledger holds only counters and nullifier hashes, never the income or the secret.
 
+The frontend has its own application tests (22, Vitest) for the logic behind the privacy check and the nullifier: the byte search for the income in a submitted transaction, flattening Lace and Effect errors into readable messages, persisting the student secret, and the nullifier staying stable for a student and distinct between students.
+
+```bash
+npm --prefix frontend test
+```
+
 ### Continuous integration
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request:
 
 - installs the Compact toolchain and compiler 0.31.1, compiles the contract and fails if the committed `managed/` output does not match the source,
 - runs the contract tests and type-checks the CLI scripts,
-- installs and builds the frontend the same way Vercel does.
+- runs the frontend application tests and builds the frontend the same way Vercel does.
 
 ### Deploy to Preprod
 

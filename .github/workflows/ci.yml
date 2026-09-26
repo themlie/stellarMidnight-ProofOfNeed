@@ -61,7 +61,7 @@ jobs:
         run: npx tsc --noEmit --module nodenext --target esnext --strict --skipLibCheck --types node scripts/deploy.ts scripts/verify.ts
 
   frontend:
-    name: Build frontend
+    name: Test and build frontend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,6 +80,9 @@ jobs:
         run: |
           npm ci
           npm --prefix frontend ci
+
+      - name: Run application tests
+        run: npm --prefix frontend test
 
       - name: Type-check and build
         run: npm --prefix frontend run build
