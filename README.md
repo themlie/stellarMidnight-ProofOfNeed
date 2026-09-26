@@ -1,6 +1,6 @@
 # ProofOfNeed: Prove your need, not your income
 
-*İhtiyacını kanıtla, gelirini söyleme.*
+https://vercel.com/senatop/stellar-midnight-proof-of-need-sfh6
 
 ProofOfNeed is a scholarship eligibility dApp on Midnight. A student proves with a zero-knowledge proof that their family income is below the threshold set by a foundation. The income never goes on-chain and never leaves the student's machine, and each student can apply only once without revealing who they are.
 
