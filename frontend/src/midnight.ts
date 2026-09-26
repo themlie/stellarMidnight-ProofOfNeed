@@ -33,9 +33,14 @@ import {
   ShieldedEncryptionPublicKey,
 } from '@midnight-ntwrk/wallet-sdk-address-format';
 
-import { Contract, ledger, type Ledger } from '../../managed/burs_eligibility/contract/index.js';
+import { Contract, ledger, pureCircuits, type Ledger } from '../../managed/burs_eligibility/contract/index.js';
 import deployment from '../../deployment-preprod.json';
-import { createBursPrivateState, witnesses, type BursPrivateState } from '../../src/witnesses.js';
+import {
+  createBursPrivateState,
+  randomStudentSecret,
+  witnesses,
+  type BursPrivateState,
+} from '../../src/witnesses.js';
 
 export const NETWORK_ID = 'preprod';
 export const CONTRACT_ADDRESS: ContractAddress = deployment.contractAddress;
@@ -56,6 +61,8 @@ export type WalletInfo = {
 
 export type EligibilityResult = {
   eligible: boolean;
+  /** Public, one-per-student tag derived from the local secret. */
+  nullifier: string;
   txId: string;
   blockHeight: number;
   /** The exact bytes handed to Lace for submission to the network. */
@@ -127,6 +134,31 @@ const laceStep = async <T>(step: string, call: () => Promise<T>): Promise<T> => 
   }
 };
 
+// ─── Student secret ───────────────────────────────────────────────────────────
+// The secret behind the application nullifier. It is kept in this browser's
+// localStorage (per contract) so the same student gets the same nullifier on
+// every visit; it is never sent anywhere. Clearing site data forgets it.
+
+const secretKey = () => `proofofneed:student-secret:${CONTRACT_ADDRESS}`;
+
+export const loadStudentSecret = (): Uint8Array => {
+  try {
+    const stored = localStorage.getItem(secretKey());
+    if (stored && /^[0-9a-f]{64}$/.test(stored)) return fromHex(stored);
+  } catch {
+    // Storage unavailable (private window): fall back to a per-tab secret.
+  }
+  const secret = randomStudentSecret();
+  try {
+    localStorage.setItem(secretKey(), toHex(secret));
+  } catch {
+    // ignore
+  }
+  return secret;
+};
+
+export const nullifierHex = (secret: Uint8Array): string => toHex(pureCircuits.applicationNullifier(secret));
+
 // ─── In-memory private state ──────────────────────────────────────────────────
 // The student's income only ever lives in this Map for the lifetime of the tab.
 // Nothing is persisted to IndexedDB or localStorage.
@@ -178,6 +210,14 @@ const laceProofProvider = async (
     proveTx: (tx, config) => laceStep("ZK proof via Lace's prover", () => inner.proveTx(tx, config)),
   };
 };
+
+/** Raised before submitting when this student's nullifier is already on-chain. */
+export class AlreadyAppliedError extends Error {
+  constructor(readonly nullifier: string) {
+    super(`Already applied (nullifier ${nullifier})`);
+    this.name = 'AlreadyAppliedError';
+  }
+}
 
 export class ProofOfNeedSession {
   private contract?: FoundContract<BursContract>;
@@ -273,30 +313,37 @@ export class ProofOfNeedSession {
         CompiledContract.withCompiledFileAssets('/burs_eligibility'),
       ),
       privateStateId: PRIVATE_STATE_ID,
-      initialPrivateState: createBursPrivateState(0n),
+      initialPrivateState: createBursPrivateState(0n, new Uint8Array(32)),
     });
     return this.contract;
   }
 
   /**
    * Proves `income < threshold` and submits the proof through Lace. The income
-   * is placed in in-memory private state, read by the familyIncome witness while
-   * proving, and wiped straight after.
+   * and the student secret are placed in in-memory private state, read by the
+   * witnesses while proving, and wiped straight after.
    */
-  async checkEligibility(income: bigint): Promise<EligibilityResult> {
+  async checkEligibility(income: bigint, secret: Uint8Array): Promise<EligibilityResult> {
+    const nullifier = pureCircuits.applicationNullifier(secret);
+    const current = await readPublicLedger(this.publicData);
+    if (current?.applications.member(nullifier)) {
+      throw new AlreadyAppliedError(toHex(nullifier));
+    }
+
     const found = await this.deployedContract();
     this.privateState.setContractAddress(CONTRACT_ADDRESS);
-    await this.privateState.set(PRIVATE_STATE_ID, createBursPrivateState(income));
+    await this.privateState.set(PRIVATE_STATE_ID, createBursPrivateState(income, secret));
     try {
       const tx = await found.callTx.check_eligibility();
       return {
         eligible: tx.private.result,
+        nullifier: toHex(nullifier),
         txId: tx.public.txId,
         blockHeight: tx.public.blockHeight,
         submittedTx: this.submitted.bytes,
       };
     } finally {
-      await this.privateState.set(PRIVATE_STATE_ID, createBursPrivateState(0n));
+      await this.privateState.set(PRIVATE_STATE_ID, createBursPrivateState(0n, new Uint8Array(32)));
     }
   }
 

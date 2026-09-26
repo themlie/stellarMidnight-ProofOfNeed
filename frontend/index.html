@@ -246,7 +246,7 @@
         <div class="bg-[#FBF8F1] border border-[#E8DCC4] p-4 rounded-xl flex items-start gap-3">
           <svg class="text-brand-brown mt-0.5 shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
           <p class="text-sm text-[#5C4532]">
-            Income is a <span class="font-bold">private witness</span>: kept only in this browser, never sent to the network even when generating a proof. Only the proof and the yes/no result reach the network.
+            Income is a <span class="font-bold">private witness</span>: kept only in this browser, never sent to the network even when generating a proof. Only the proof, the yes/no result and an anonymous application ID (nullifier) reach the network.
           </p>
         </div>
 
@@ -264,6 +264,7 @@
             <span class="font-mono text-xs break-all" id="student-contract-address"></span>
             <span class="text-xs text-dim">Midnight Preprod · threshold <span class="font-semibold text-[#1A1A1A]" id="student-threshold">…</span></span>
           </div>
+          <p class="text-xs text-dim mt-1">Your anonymous application ID (one application per student): <span id="student-nullifier">…</span></p>
         </div>
 
         <button onclick="generateProof()" id="btn-proof" class="w-full bg-brand-brown hover-bg-brand-brown text-white font-medium py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all mt-2">
@@ -290,7 +291,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="grid grid-cols-2 gap-4">
           <div class="border border-dim rounded-xl p-4">
             <p class="text-xs text-dim uppercase font-semibold tracking-wider">threshold</p>
             <p class="text-2xl font-bold mt-1" id="ledger-threshold">…</p>
@@ -303,12 +304,16 @@
             <p class="text-xs text-dim uppercase font-semibold tracking-wider">eligibleCount</p>
             <p class="text-2xl font-bold mt-1" id="ledger-eligible">…</p>
           </div>
+          <div class="border border-dim rounded-xl p-4">
+            <p class="text-xs text-dim uppercase font-semibold tracking-wider">applications</p>
+            <p class="text-2xl font-bold mt-1" id="ledger-applications">…</p>
+          </div>
         </div>
 
         <div class="flex flex-col gap-1">
           <p class="text-xs text-dim">Contract address (Midnight Preprod)</p>
           <p class="font-mono text-xs break-all" id="foundation-contract-address"></p>
-          <p class="text-xs text-dim mt-2">This is the entire public ledger of the contract, read live from the Preprod indexer. There is no field for income: the foundation learns how many students passed, never what they earn. The threshold is set once at deploy time (<span class="font-mono">npm run deploy</span>).</p>
+          <p class="text-xs text-dim mt-2">This is the entire public ledger of the contract, read live from the Preprod indexer. There is no field for income: the foundation learns how many students passed, never what they earn. <span class="font-mono">applications</span> holds one anonymous nullifier per student, which stops double applications without revealing who applied. The threshold is set once at deploy time (<span class="font-mono">npm run deploy</span>).</p>
         </div>
 
         <button onclick="refreshLedger()" id="btn-deploy" class="w-full bg-brand-brown hover-bg-brand-brown text-white font-medium py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all mt-2">
@@ -332,7 +337,7 @@
         <div class="bg-[#FBF8F1] border border-[#E8DCC4] p-4 rounded-xl flex items-start gap-3">
           <svg class="text-brand-brown mt-0.5 shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
           <p class="text-sm text-[#5C4532]">
-            These rows are exactly what anyone can read on-chain: a transaction and a yes/no result. The income that produced each result is <span class="font-bold">not</span> in the transaction and is not stored anywhere.
+            These rows are exactly what anyone can read on-chain: an anonymous nullifier and a yes/no result. The income that produced each result is <span class="font-bold">not</span> in the transaction and is not stored anywhere.
           </p>
         </div>
 
@@ -341,7 +346,7 @@
             <thead>
               <tr class="border-b border-dim text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 <th class="pb-3 pl-2">Time</th>
-                <th class="pb-3">Transaction</th>
+                <th class="pb-3">Nullifier</th>
                 <th class="pb-3">Result</th>
                 <th class="pb-3 text-right pr-2">Block</th>
               </tr>
@@ -378,13 +383,18 @@
         
         <div id="zk-code-block" class="p-4 font-mono text-xs leading-relaxed overflow-x-auto">
 <pre><code><span class="token-comment">// burs_eligibility.compact</span>
-<span class="token-keyword">export ledger</span> threshold: Uint&lt;64&gt;;      <span class="token-comment">// public</span>
-<span class="token-keyword">export ledger</span> totalChecks: Counter;      <span class="token-comment">// public</span>
-<span class="token-keyword">export ledger</span> eligibleCount: Counter;    <span class="token-comment">// public</span>
+<span class="token-keyword">export ledger</span> threshold: Uint&lt;64&gt;;         <span class="token-comment">// public</span>
+<span class="token-keyword">export ledger</span> totalChecks: Counter;         <span class="token-comment">// public</span>
+<span class="token-keyword">export ledger</span> eligibleCount: Counter;       <span class="token-comment">// public</span>
+<span class="token-keyword">export ledger</span> applications: Set&lt;Bytes&lt;32&gt;&gt;; <span class="token-comment">// public nullifiers</span>
 
-<span class="token-keyword">witness</span> familyIncome(): Uint&lt;64&gt;;       <span class="token-comment">// private, this browser only</span>
+<span class="token-keyword">witness</span> familyIncome(): Uint&lt;64&gt;;    <span class="token-comment">// private</span>
+<span class="token-keyword">witness</span> studentSecret(): Bytes&lt;32&gt;;  <span class="token-comment">// private</span>
 
 <span class="token-keyword">export circuit</span> <span class="token-string">check_eligibility</span>(): Boolean {
+  <span class="token-keyword">const</span> n = <span class="token-keyword">disclose</span>(applicationNullifier(studentSecret()));
+  <span class="token-keyword">assert</span>(!applications.member(n), <span class="token-string">"Already applied"</span>);
+  applications.insert(n);
   <span class="token-keyword">const</span> eligible = <span class="token-keyword">disclose</span>(familyIncome() &lt; threshold);
   totalChecks.increment(1);
   <span class="token-keyword">if</span> (eligible) { eligibleCount.increment(1); }
@@ -400,7 +410,7 @@
         <div class="bg-[#151515] p-4 flex items-center justify-between border-t border-[#333]">
           <div>
             <p class="text-[10px] text-gray-500 font-bold uppercase mb-1">Secret</p>
-            <p class="text-xs text-gray-300">income <span class="text-gray-600">—</span> only on device</p>
+            <p class="text-xs text-gray-300">income, secret <span class="text-gray-600">—</span> only on device</p>
           </div>
           <div>
             <p class="text-[10px] text-gray-500 font-bold uppercase mb-1">Public</p>
@@ -408,7 +418,7 @@
           </div>
           <div>
             <p class="text-[10px] text-[#4ADE80] font-bold uppercase mb-1">To Network</p>
-            <p class="text-xs text-gray-300">proof + yes/no</p>
+            <p class="text-xs text-gray-300">proof + yes/no + nullifier</p>
           </div>
         </div>
       </div>
