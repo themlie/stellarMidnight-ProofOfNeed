@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COMPACT_VERSION: 0.31.1
+  NODE_VERSION: 22
+
+jobs:
+  contract:
+    name: Compile contract and run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install the Compact toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install compiler ${{ env.COMPACT_VERSION }}
+        run: |
+          compact update "$COMPACT_VERSION"
+          compact compile +"$COMPACT_VERSION" --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile the contract
+        run: npm run compile
+
+      # The compiled circuits, keys and bindings are committed so the frontend
+      # and deploy script can use them. Fail if they are out of date.
+      - name: Check committed build output matches the source
+        run: |
+          if ! git diff --exit-code --stat -- managed; then
+            echo "::error::managed/ is out of date. Run 'npm run compile' and commit the result."
+            exit 1
+          fi
+
+      - name: Run contract tests
+        run: npm test -- --ci
+
+      - name: Type-check CLI scripts
+        run: npx tsc --noEmit --module nodenext --target esnext --strict --skipLibCheck --types node scripts/deploy.ts scripts/verify.ts
+
+  frontend:
+    name: Build frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      # The frontend imports the compiled contract and witnesses from the repo
+      # root, so both packages are installed (same as the Vercel build).
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm --prefix frontend ci
+
+      - name: Type-check and build
+        run: npm --prefix frontend run build

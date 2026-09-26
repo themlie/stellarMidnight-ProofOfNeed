@@ -1,5 +1,7 @@
 # ProofOfNeed: Prove your need, not your income
 
+[![CI](https://github.com/themlie/stellarMidnight-ProofOfNeed/actions/workflows/ci.yml/badge.svg)](https://github.com/themlie/stellarMidnight-ProofOfNeed/actions/workflows/ci.yml)
+
 *İhtiyacını kanıtla, gelirini söyleme.*
 
 ProofOfNeed is a scholarship eligibility dApp on Midnight. A student proves with a zero-knowledge proof that their family income is below the threshold set by a foundation. The income never goes on-chain and never leaves the student's machine, and each student can apply only once without revealing who they are.
@@ -113,6 +115,14 @@ npm test
 ```
 
 The 10 tests execute the compiled contract on `compact-runtime` with the income and the student secret passed in as private witnesses. They cover income below, above and equal to the threshold, zero income, a second application with the same secret, a rejected student retrying with a lower income, several different students, and check that the ledger holds only counters and nullifier hashes, never the income or the secret.
+
+### Continuous integration
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request:
+
+- installs the Compact toolchain and compiler 0.31.1, compiles the contract and fails if the committed `managed/` output does not match the source,
+- runs the contract tests and type-checks the CLI scripts,
+- installs and builds the frontend the same way Vercel does.
 
 ### Deploy to Preprod
 
