@@ -35,6 +35,8 @@ import {
 
 import { Contract, ledger, pureCircuits, type Ledger } from '../../managed/burs_eligibility/contract/index.js';
 import deployment from '../../deployment-preprod.json';
+import { describeError, fromHex, toHex } from './privacy';
+import { loadOrCreateSecret } from './secret';
 import {
   createBursPrivateState,
   randomStudentSecret,
@@ -69,61 +71,6 @@ export type EligibilityResult = {
   submittedTx: Uint8Array;
 };
 
-/**
- * Searches the submitted transaction for the income encoded as a 64-bit
- * integer (both byte orders). Used to show the user that the value they typed
- * is not part of what was sent to the chain.
- */
-export const findIncomeInTx = (tx: Uint8Array, income: bigint): boolean => {
-  const le = new Uint8Array(8);
-  new DataView(le.buffer).setBigUint64(0, income, true);
-  const be = le.slice().reverse();
-  const contains = (needle: Uint8Array) => {
-    outer: for (let i = 0; i + needle.length <= tx.length; i++) {
-      for (let j = 0; j < needle.length; j++) if (tx[i + j] !== needle[j]) continue outer;
-      return true;
-    }
-    return false;
-  };
-  return contains(le) || contains(be);
-};
-
-// ─── Hex helpers ──────────────────────────────────────────────────────────────
-
-const toHex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-const fromHex = (hex: string) => Uint8Array.from(hex.match(/../g) ?? [], (h) => parseInt(h, 16));
-
-// ─── Error reporting ──────────────────────────────────────────────────────────
-// Lace rejects with plain objects ({ code, reason }) or message-less Errors, which
-// midnight-js wraps as "...: Error". Flatten the whole cause chain into text.
-
-export const describeError = (err: unknown): string => {
-  const parts: string[] = [];
-  let current: unknown = err;
-  for (let depth = 0; current != null && depth < 6; depth++) {
-    if (typeof current === 'object') {
-      const e = current as { name?: string; message?: string; code?: unknown; reason?: unknown; cause?: unknown };
-      const fields = [e.name, e.message, e.code != null ? `code=${String(e.code)}` : '', e.reason != null ? `reason=${String(e.reason)}` : '']
-        .filter((x) => x && x !== 'Error')
-        .join(' ');
-      let extra = '';
-      if (!fields) {
-        try {
-          extra = JSON.stringify(current);
-        } catch {
-          extra = String(current);
-        }
-      }
-      parts.push(fields || extra);
-      current = e.cause;
-    } else {
-      parts.push(String(current));
-      current = undefined;
-    }
-  }
-  return parts.filter(Boolean).join(' ← ');
-};
-
 /** Labels a failing Lace call with the step it belongs to. */
 const laceStep = async <T>(step: string, call: () => Promise<T>): Promise<T> => {
   try {
@@ -141,21 +88,8 @@ const laceStep = async <T>(step: string, call: () => Promise<T>): Promise<T> => 
 
 const secretKey = () => `proofofneed:student-secret:${CONTRACT_ADDRESS}`;
 
-export const loadStudentSecret = (): Uint8Array => {
-  try {
-    const stored = localStorage.getItem(secretKey());
-    if (stored && /^[0-9a-f]{64}$/.test(stored)) return fromHex(stored);
-  } catch {
-    // Storage unavailable (private window): fall back to a per-tab secret.
-  }
-  const secret = randomStudentSecret();
-  try {
-    localStorage.setItem(secretKey(), toHex(secret));
-  } catch {
-    // ignore
-  }
-  return secret;
-};
+export const loadStudentSecret = (): Uint8Array =>
+  loadOrCreateSecret(typeof localStorage === 'undefined' ? undefined : localStorage, secretKey(), randomStudentSecret);
 
 export const nullifierHex = (secret: Uint8Array): string => toHex(pureCircuits.applicationNullifier(secret));
 
@@ -218,6 +152,8 @@ export class AlreadyAppliedError extends Error {
     this.name = 'AlreadyAppliedError';
   }
 }
+
+export { describeError, findIncomeInTx, isMissingDust } from './privacy';
 
 export class ProofOfNeedSession {
   private contract?: FoundContract<BursContract>;
