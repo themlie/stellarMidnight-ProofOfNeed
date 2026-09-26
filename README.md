@@ -4,6 +4,8 @@
 
 ProofOfNeed is a scholarship eligibility dApp on Midnight. A student proves with a zero-knowledge proof that their family income is below the threshold set by a foundation. The income never goes on-chain and never leaves the student's machine, and each student can apply only once without revealing who they are.
 
+**Live demo:** https://stellar-midnight-proof-of-need-sfh6.vercel.app/ (reads the contract on Midnight Preprod; submitting a proof needs Lace on Preprod and a local proof server, see [Running the dApp](#running-the-dapp)).
+
 ## Product idea
 
 Applying for a scholarship today means handing your family's income, occupations and employers to a clerk or a foundation officer. That is far more personal data than the decision needs, and for many families the process is humiliating. All the foundation actually needs to know is whether the student is below the threshold. In ProofOfNeed the foundation publishes the threshold on-chain, the student generates a proof using their income only on their own device, and the network verifies that proof. The foundation sees a yes or no answer and never sees the number. Later stages will pay eligible students a monthly stipend from donor funds.
