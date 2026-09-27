@@ -120,14 +120,14 @@
   </div>
 
   <!-- Navbar -->
-  <header class="w-full border-b border-dim px-8 py-6 flex justify-between items-center bg-[#FAFAEE] sticky top-0 z-50">
+  <header class="w-full border-b border-dim px-4 py-4 sm:px-8 sm:py-6 flex flex-wrap justify-between items-center gap-y-3 bg-[#FAFAEE] sticky top-0 z-50">
     <!-- Logo matching the reference -->
     <div class="flex items-center">
-      <h1 class="font-bold text-3xl tracking-tight text-[#1A1A1A]">Proof<span class="text-brand-brown">OfNeed</span></h1>
+      <h1 class="font-bold text-2xl sm:text-3xl tracking-tight text-[#1A1A1A]">Proof<span class="text-brand-brown">OfNeed</span></h1>
     </div>
 
     <!-- Nav Links (Center/Right-ish) matching the reference -->
-    <nav class="flex items-center gap-4 md:gap-8 font-mono text-[11px] md:text-[13px] tracking-wide text-dim">
+    <nav class="order-last w-full justify-center md:order-none md:w-auto flex items-center gap-4 md:gap-8 font-mono text-[11px] md:text-[13px] tracking-wide text-dim">
       <a href="/how-it-works.html" class="hover:text-[#1A1A1A] transition-colors">how it works</a>
       <a href="/about.html" class="hover:text-[#1A1A1A] transition-colors">about us</a>
       <a href="/faq.html" class="hover:text-[#1A1A1A] transition-colors">faq</a>
@@ -246,7 +246,7 @@
         <div class="bg-[#FBF8F1] border border-[#E8DCC4] p-4 rounded-xl flex items-start gap-3">
           <svg class="text-brand-brown mt-0.5 shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
           <p class="text-sm text-[#5C4532]">
-            Income is a <span class="font-bold">private witness</span>: kept only in this browser, never sent to the network even when generating a proof. Only the proof, the yes/no result and an anonymous application ID (nullifier) reach the network.
+            Income is a <span class="font-bold">private witness</span>: kept only on your machine and never sent to the network, even while the proof is generated. Only the proof, the yes/no result and an anonymous application ID (nullifier) reach the network.
           </p>
         </div>
 
@@ -255,7 +255,7 @@
             <span>Monthly family income (TL) — <span class="text-dim font-normal">Private Witness</span></span>
             </label>
           <input type="number" id="income-input" placeholder="e.g. 8000" class="w-full px-4 py-3 border border-dim rounded-lg focus:outline-none focus:border-brand-brown focus:ring-1 focus:ring-brand-brown transition-colors">
-          <p class="text-xs text-dim mt-1" id="income-helper">This value never leaves your browser. It is not sent to the server, foundation, or blockchain.</p>
+          <p class="text-xs text-dim mt-1" id="income-helper">This value never leaves your machine. It is not sent to any server, the foundation or the blockchain.</p>
         </div>
 
         <div class="flex flex-col gap-2">
