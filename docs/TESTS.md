@@ -29,6 +29,8 @@ The contract tests run the **compiled** contract from `managed/burs_eligibility`
 | records counters and nullifiers, never the income or the secret | After three applications the ledger has exactly `threshold`, `totalChecks`, `eligibleCount` and `applications`; each nullifier is in the set and no secret is. |
 | derives a nullifier that differs from the secret and is stable | `applicationNullifier` is deterministic and does not echo the secret. |
 
+![Contract tests passing](test-contract.png)
+
 Output:
 
 ```
@@ -56,6 +58,8 @@ The same circuit has also been exercised on Midnight Preprod against the deploye
 ## Application tests
 
 These cover the frontend logic that the privacy claim depends on.
+
+![Application tests passing](test-app.png)
 
 | Area | What is checked |
 |---|---|

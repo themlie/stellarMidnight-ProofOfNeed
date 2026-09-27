@@ -120,6 +120,10 @@ npm test
 
 The contract tests live in [tests/burs_eligibility.test.ts](tests/burs_eligibility.test.ts), with the harness in [tests/simulator.ts](tests/simulator.ts). [docs/TESTS.md](docs/TESTS.md) lists every test in both suites, what each one shows, and their output.
 
+![Contract tests passing](docs/test-contract.png)
+
+![Application tests passing](docs/test-app.png)
+
 The 10 tests execute the compiled contract on `compact-runtime` with the income and the student secret passed in as private witnesses. They cover income below, above and equal to the threshold, zero income, a second application with the same secret, a rejected student retrying with a lower income, several different students, and check that the ledger holds only counters and nullifier hashes, never the income or the secret.
 
 The frontend has its own application tests (22, Vitest) for the logic behind the privacy check and the nullifier: the byte search for the income in a submitted transaction, flattening Lace and Effect errors into readable messages, persisting the student secret, and the nullifier staying stable for a student and distinct between students.
