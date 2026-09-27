@@ -10,6 +10,8 @@ ProofOfNeed is a scholarship eligibility dApp on Midnight. A student proves with
 
 ## Product idea
 
+The full proposal for the "Age / Eligibility Gate" item is in [docs/PROPOSAL.md](docs/PROPOSAL.md).
+
 Applying for a scholarship today means handing your family's income, occupations and employers to a clerk or a foundation officer. That is far more personal data than the decision needs, and for many families the process is humiliating. All the foundation actually needs to know is whether the student is below the threshold. In ProofOfNeed the foundation publishes the threshold on-chain, the student generates a proof using their income only on their own device, and the network verifies that proof. The foundation sees a yes or no answer and never sees the number. Later stages will pay eligible students a monthly stipend from donor funds.
 
 ## Privacy model
@@ -72,6 +74,8 @@ tests/                     Local simulator and tests that run the compiled contr
 scripts/wallet.ts          Shared Preprod wallet setup (seed, WASM proving, sync cache, DUST)
 scripts/deploy.ts          Preprod deploy script
 scripts/verify.ts          Reads the deployed contract back from the indexer
+scripts/apply.ts           Submits a real eligibility check to the deployed contract
+scripts/contract.ts        Contract providers shared by deploy and apply
 frontend/                  Browser dApp (Vite + Midnight SDK + Lace)
 ```
 
@@ -189,6 +193,25 @@ The same data is in [deployment-preprod.json](deployment-preprod.json). To read 
 ```bash
 npm run verify
 ```
+
+### On-chain usage
+
+Applications submitted to the current contract with `npm run apply`, which proves and submits `check_eligibility` from the command line using the script wallet (the same circuit and SDK calls as the dApp, with the script wallet paying the fee instead of Lace):
+
+```bash
+npm run apply -- 8000            # a new student with income 8000
+npm run apply -- 5000 --again    # the same student applying again
+```
+
+| Income (private) | Result | Transaction | Block |
+|---|---|---|---|
+| 8000 | eligible | `0cfcd9589906bc8e30a428fd0cd4b03e6fdf27e6715245d14c11460767392289` | 2735729 |
+| 5000, same student | refused: "Already applied" (the circuit fails against the on-chain nullifier set, so nothing is submitted) | none | none |
+| 15000 | not eligible | `14118dbade4251f5093362d9a1a5f3cc84b55c0dc0b03f87801082ba0cfacafc` | 2735812 |
+
+After these, `npm run verify` shows `totalChecks = 2`, `eligibleCount = 1` and two nullifiers on the ledger, and no income anywhere.
+
+### Level 1 contract
 
 The Level 1 contract (income check only, no nullifier) is still on Preprod at `6a7ef6a4713cbe57e0fe511458bf5f2bfe8fa043546e41771b91987f6b42a7ac` (block 2705042). The `level-1` tag holds the code and README from that submission.
 
