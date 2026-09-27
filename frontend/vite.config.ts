@@ -35,6 +35,8 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.ts'],
+    // List each test by name, also in CI logs.
+    reporters: ['verbose'],
     environment: 'node',
   },
   server: {
