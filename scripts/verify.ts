@@ -47,8 +47,10 @@ const { threshold, totalChecks, eligibleCount, applications } = ledger(state.dat
 
 console.log('🌑 ProofOfNeed — on-chain verification (Midnight Preprod)\n');
 console.log(`📍 Contract address : ${address}`);
-console.log(`🧾 Deploy tx        : ${action.transaction.hash}`);
-console.log(`📦 Block            : ${action.transaction.block.height} (${new Date(action.transaction.block.timestamp).toISOString()})`);
+// contractAction returns the latest action: the deploy, or the most recent call.
+const kind = action.__typename === 'ContractDeploy' ? 'deploy' : 'latest call';
+console.log(`🧾 Last action      : ${action.transaction.hash} (${kind})`);
+console.log(`📦 At block         : ${action.transaction.block.height} (${new Date(action.transaction.block.timestamp).toISOString()})`);
 console.log(`⚙️  Circuits         : ${state.operations().join(', ')}`);
 console.log('\n📖 Public ledger state');
 console.log(`   threshold      = ${threshold}`);

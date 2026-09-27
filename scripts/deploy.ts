@@ -12,26 +12,13 @@
  * tNIGHT'ı görünce DUST üretimine kaydeder, DUST oluşunca sözleşmeyi deploy eder.
  */
 
-import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import {
-  createProofProvider,
-  type MidnightProvider,
-  type ProofProvider,
-  type WalletProvider,
-} from '@midnight-ntwrk/midnight-js-types';
-import { WasmProver } from '@midnight-ntwrk/wallet-sdk-prover-client/effect';
-import { Effect } from 'effect';
 
-import { Contract } from '../managed/burs_eligibility/contract/index.js';
-import { createBursPrivateState, witnesses, type BursPrivateState } from '../src/witnesses.js';
+import { createBursPrivateState } from '../src/witnesses.js';
+import { PRIVATE_STATE_ID, compiledBursContract, makeContractProviders } from './contract.js';
 import {
   CONFIG,
   ROOT,
@@ -39,7 +26,6 @@ import {
   nightBalance,
   openPreprodWallet,
   registerForDust,
-  submitWithRetry,
   waitFor,
   type PreprodWallet,
 } from './wallet.js';
@@ -74,54 +60,15 @@ async function main() {
   console.log('🌑 ProofOfNeed — Preprod deploy\n');
 
   const ctx = await openPreprodWallet();
-  const { wallet, seed, keystore, shieldedSecretKeys, dustSecretKey, zkConfigProvider, keyMaterialProvider, synced } =
-    ctx;
-
   await ensureDust(ctx);
 
-  // ─── Providers ─────────────────────────────────────────────────────────────
-  const walletProvider: WalletProvider & MidnightProvider = {
-    getCoinPublicKey: () => synced.shielded.coinPublicKey.toHexString(),
-    getEncryptionPublicKey: () => synced.shielded.encryptionPublicKey.toHexString(),
-    async balanceTx(tx, ttl) {
-      const recipe = await wallet.balanceUnboundTransaction(
-        tx,
-        { shieldedSecretKeys, dustSecretKey },
-        { ttl: ttl ?? new Date(Date.now() + 30 * 60 * 1000) },
-      );
-      const signed = await wallet.signRecipe(recipe, (payload) => keystore.signData(payload));
-      return wallet.finalizeRecipe(signed);
-    },
-    submitTx: (tx) => submitWithRetry(wallet, tx),
-  };
-
-  const proofProvider: ProofProvider = CONFIG.proofServerUrl
-    ? httpClientProofProvider(CONFIG.proofServerUrl, zkConfigProvider)
-    : createProofProvider(Effect.runSync(WasmProver.create({ keyMaterialProvider })).asProvingProvider());
-  const providers = {
-    privateStateProvider: levelPrivateStateProvider<'burs-eligibility', BursPrivateState>({
-      privateStateStoreName: 'burs-eligibility-state',
-      accountId: keystore.getBech32Address().asString(),
-      // The provider requires 3+ character classes; a bare hex digest only has two.
-      privateStoragePasswordProvider: () => `Burs-${createHash('sha256').update(`burs:${seed}`).digest('hex')}`,
-    }),
-    publicDataProvider: indexerPublicDataProvider(CONFIG.indexerHttpUrl, CONFIG.indexerWsUrl),
-    zkConfigProvider,
-    proofProvider,
-    walletProvider,
-    midnightProvider: walletProvider,
-  };
-
-  // ─── Deploy ────────────────────────────────────────────────────────────────
-  const compiledContract = CompiledContract.make('burs_eligibility', Contract).pipe(
-    CompiledContract.withWitnesses(witnesses),
-    CompiledContract.withCompiledFileAssets(CONFIG.zkConfigDir),
-  );
+  const providers = makeContractProviders(ctx);
+  const compiledContract = compiledBursContract();
 
   console.log(`⏳ Sözleşme deploy ediliyor (threshold = ${INITIAL_THRESHOLD} TL)...`);
   const deployed = await deployContract(providers, {
     compiledContract,
-    privateStateId: 'burs-eligibility',
+    privateStateId: PRIVATE_STATE_ID,
     // The deployer never proves eligibility, so its local income is irrelevant.
     initialPrivateState: createBursPrivateState(0n, new Uint8Array(32)),
     args: [INITIAL_THRESHOLD],
