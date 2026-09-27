@@ -51,15 +51,15 @@
     <div class="w-full max-w-2xl mx-auto text-left space-y-10 mt-8">
       <div>
         <h3 class="font-bold text-xl mb-3 text-[#1A1A1A]">1. Input Income Locally</h3>
-        <p class="text-gray-600 leading-relaxed text-lg">You enter your family's income details into the browser. This data stays completely local and never leaves your device.</p>
+        <p class="text-gray-600 leading-relaxed text-lg">You connect Lace and enter your family's income. It is kept as a private witness in the page's memory and never sent to a server, the foundation or the chain.</p>
       </div>
       <div>
         <h3 class="font-bold text-xl mb-3 text-[#1A1A1A]">2. Generate ZK Proof</h3>
-        <p class="text-gray-600 leading-relaxed text-lg">The Midnight smart contract circuit runs a verification locally. It generates a cryptographic proof that you meet the criteria, without revealing the actual numbers.</p>
+        <p class="text-gray-600 leading-relaxed text-lg">The contract's check_eligibility circuit runs on your machine, and the prover Lace uses (a local proof server) turns the result into a zero-knowledge proof that your income is below the threshold.</p>
       </div>
       <div>
-        <h3 class="font-bold text-xl mb-3 text-[#1A1A1A]">3. Trustless Approval</h3>
-        <p class="text-gray-600 leading-relaxed text-lg">The foundation receives the proof and issues the scholarship. They can cryptographically verify you are eligible, but your privacy remains 100% intact.</p>
+        <h3 class="font-bold text-xl mb-3 text-[#1A1A1A]">3. Verified on Midnight</h3>
+        <p class="text-gray-600 leading-relaxed text-lg">The network verifies the proof. The public ledger records a yes/no answer and an anonymous application ID that blocks a second application, and never the income. Paying stipends to eligible students is planned for a later version.</p>
       </div>
     </div>
   </main>

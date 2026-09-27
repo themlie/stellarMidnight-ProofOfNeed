@@ -195,21 +195,21 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
         </div>
         <h3 class="font-bold text-lg mb-3">Your income stays private</h3>
-        <p class="text-sm text-dim leading-relaxed">Your family income is kept as a <span class="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded">private witness</span> only in your browser's memory — it is never sent to the server, foundation, or blockchain.</p>
+        <p class="text-sm text-dim leading-relaxed">Your family income is a <span class="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded">private witness</span>: it stays on your machine and is never sent to a server, the foundation or the blockchain.</p>
       </div>
       <div class="bg-white p-8 rounded-2xl border border-dim shadow-sm fade-in-up delay-300 text-left">
         <div class="w-10 h-10 bg-[#F5EAD4] rounded-full flex items-center justify-center text-brand-brown mb-6">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
         </div>
         <h3 class="font-bold text-lg mb-3">Proof is generated locally</h3>
-        <p class="text-sm text-dim leading-relaxed">The <span class="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded">check_eligibility(income)</span> circuit runs on your device; your eligibility turns into a mathematical ZK-SNARK proof.</p>
+        <p class="text-sm text-dim leading-relaxed">The <span class="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded">check_eligibility</span> circuit runs on your machine and your own local prover turns the result into a zero-knowledge proof.</p>
       </div>
       <div class="bg-white p-8 rounded-2xl border border-dim shadow-sm fade-in-up delay-[400ms] text-left">
         <div class="w-10 h-10 bg-[#F5EAD4] rounded-full flex items-center justify-center text-brand-brown mb-6">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
         </div>
-        <h3 class="font-bold text-lg mb-3">Only the proof goes to the network</h3>
-        <p class="text-sm text-dim leading-relaxed">The foundation verifies the fact 'this student is below the threshold' without knowing your income. Nobody sees anything.</p>
+        <h3 class="font-bold text-lg mb-3">Only a yes/no reaches the network</h3>
+        <p class="text-sm text-dim leading-relaxed">The network checks the proof that you are below the threshold. The chain records the answer and an anonymous application ID that blocks double applications, never your income.</p>
       </div>
     </div>
   </main>

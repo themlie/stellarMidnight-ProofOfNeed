@@ -358,20 +358,20 @@ const renderPrivacyCheck = (
 // ==========================================
 const chatData: Record<string, {tr: string, en: string}> = {
   "zk": {
-    tr: "ZK (Zero-Knowledge) proof, bir bilginin kendisini açıklamadan doğruluğunu matematiksel olarak kanıtlama yöntemidir. Ağa sadece kanıt gider, veriniz cihazınızda kalır.",
-    en: "A ZK (Zero-Knowledge) proof is a method of mathematically proving the validity of a statement without revealing the underlying data. Only the proof goes to the network, your data stays on your device."
+    tr: "ZK (sıfır bilgi) kanıtı, bir ifadenin doğru olduğunu altındaki veriyi açıklamadan matematiksel olarak kanıtlamanın yoludur. Burada ifade 'gelirim eşiğin altında'; gelirin kendisi bilgisayarında kalır.",
+    en: "A zero-knowledge proof shows that a statement is true without revealing the data behind it. Here the statement is 'my income is below the threshold'; the income itself stays on your machine."
   },
   "privacy": {
-    tr: "Evet, kesinlikle! Midnight'ın ZK altyapısı sayesinde gelir veriniz tarayıcınızdan asla çıkmaz. Sadece uygun olduğunuzu ispatlayan bir 'kanıt' üretilir.",
-    en: "Yes, absolutely! Thanks to Midnight's ZK infrastructure, your income data never leaves your browser. Only a 'proof' showing your eligibility is generated."
+    tr: "Evet. Gelirin bir private witness olarak bilgisayarında kalır ve kanıtı kendi yerel prover'ın üretir. Zincire yalnızca evet/hayır sonucu ve anonim bir başvuru kimliği yazılır. Başvurudan sonra gizlilik panelinde gönderilen işlemde gelirin bulunmadığını görebilirsin.",
+    en: "Yes. Your income is a private witness that stays on your machine, and your own local prover makes the proof. The chain only records a yes/no and an anonymous application ID. After applying, the privacy check shows that the transaction does not contain your income."
   },
   "contract": {
-    tr: "Vakıf bir eşik belirleyip akıllı sözleşmeyi ağa dağıtır. Öğrenci başvurduğunda cüzdanı, sözleşmenin kurallarıyla eşleştirip lokal bir ZK kanıtı oluşturur.",
-    en: "The foundation sets a threshold and deploys the smart contract. When a student applies, their wallet matches the rules and generates a local ZK proof."
+    tr: "Vakıf eşiği belirleyip sözleşmeyi deploy eder. Öğrenci gelirini girer; check_eligibility devresi gelirin eşiğin altında olduğunu kanıtlar ve anonim bir nullifier yazar. Aynı öğrenci ikinci kez başvuramaz.",
+    en: "The foundation sets a threshold and deploys the contract. A student enters their income; the check_eligibility circuit proves it is below the threshold and records an anonymous nullifier, so the same student cannot apply twice."
   },
   "default": {
-    tr: "Midnight ve ZK teknolojisi ile burs başvuru süreçlerini tamamen güvenilir ve anonim hale getiriyoruz! Başka ne öğrenmek istersiniz?",
-    en: "We make scholarship applications completely trustless and anonymous with Midnight and ZK technology! What else would you like to know?"
+    tr: "ZK kanıtları, gelirinin gizli kalıp kalmayacağı ya da sözleşmenin nasıl çalıştığı hakkında soru sorabilirsin.",
+    en: "You can ask about ZK proofs, whether your income stays private, or how the contract works."
   }
 };
 
@@ -448,11 +448,11 @@ const trDict: Record<string, string> = {
   "Prove your scholarship eligibility with zero-knowledge proofs. Your income data never leaks from your browser, not even the foundation sees your actual salary.": "Sıfır bilgi kanıtıyla burs uygunluğunu ispatla. Gelir verisi tarayıcından dışarı sızmaz, vakıf bile gerçek maaşını göremez.",
   "Connect Lace Wallet": "Lace Cüzdanını Bağla",
   "Your income stays private": "Gelirin gizli kalır",
-  "Your family income is kept as a <span class=\"font-mono text-xs bg-gray-100 px-1 py-0.5 rounded\">private witness</span> only in your browser's memory — it is never sent to the server, foundation, or blockchain.": "Aile gelirin <span class=\"font-mono text-xs bg-gray-100 px-1 py-0.5 rounded\">private witness</span> olarak yalnızca tarayıcının belleğinde tutulur — sunucuya, vakfa veya blokzincire asla gönderilmez.",
+  "Your family income is a <span class=\"font-mono text-xs bg-gray-100 px-1 py-0.5 rounded\">private witness</span>: it stays on your machine and is never sent to a server, the foundation or the blockchain.": "Aile gelirin bir <span class=\"font-mono text-xs bg-gray-100 px-1 py-0.5 rounded\">private witness</span>: bilgisayarında kalır, hiçbir sunucuya, vakfa ya da blokzincire gönderilmez.",
   "Proof is generated locally": "Kanıt lokalde üretilir",
-  "The <span class=\"font-mono text-xs bg-gray-100 px-1 py-0.5 rounded\">check_eligibility(income)</span> circuit runs on your device; your eligibility turns into a mathematical ZK-SNARK proof.": "<span class=\"font-mono text-xs bg-gray-100 px-1 py-0.5 rounded\">check_eligibility(income)</span> devresi cihazında çalışır; uygunluğun matematiksel bir ZK-SNARK kanıtına dönüşür.",
-  "Only the proof goes to the network": "Ağa sadece kanıt gider",
-  "The foundation verifies the fact 'this student is below the threshold' without knowing your income. Nobody sees anything.": "Vakıf, gelirini bilmeden 'bu öğrenci eşiğin altında' gerçeğini doğrular. Ne gördüğü olur, ne kimse.",
+  "The <span class=\"font-mono text-xs bg-gray-100 px-1 py-0.5 rounded\">check_eligibility</span> circuit runs on your machine and your own local prover turns the result into a zero-knowledge proof.": "<span class=\"font-mono text-xs bg-gray-100 px-1 py-0.5 rounded\">check_eligibility</span> devresi bilgisayarında çalışır, sonucu kendi yerel prover'ın sıfır bilgi kanıtına dönüştürür.",
+  "Only a yes/no reaches the network": "Ağa yalnızca evet/hayır ulaşır",
+  "The network checks the proof that you are below the threshold. The chain records the answer and an anonymous application ID that blocks double applications, never your income.": "Ağ, eşiğin altında olduğunu gösteren kanıtı doğrular. Zincire yalnızca cevap ve ikinci başvuruyu engelleyen anonim bir başvuru kimliği yazılır, gelirin asla yazılmaz.",
   "Student Application": "Öğrenci Başvurusu",
   "Foundation Management": "Vakıf Yönetimi",
   "Application List": "Başvuru Listesi",
